@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Event Horizon</title>
+<meta name="description" content="Three real-time black hole simulators that run in your browser, ray-traced through Einstein’s equations.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Event Horizon: three black hole simulators">
+<meta property="og:description" content="Ray-traced live in your browser through Einstein’s equations. A black hole, a ship reassembling out of one, and a faster-than-light strike.">
+<meta property="og:image" content="https://drjoetruax.github.io/event-horizon/docs/warp-strike.png">
+<meta property="og:url" content="https://drjoetruax.github.io/event-horizon/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root{
+  --void:#050407; --ink:#F1EADF; --ink-2:#D6CEC2; --muted:#A1998E; --faint:#6A645C;
+  --ember:#FFB563; --line:rgba(255,236,210,.10); --card:rgba(255,240,220,.03);
+}
+*{box-sizing:border-box}
+html{background:var(--void)}
+body{margin:0;background:var(--void);color:var(--ink);font:400 16px/1.6 'IBM Plex Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+header{padding:96px 0 56px}
+.kicker{font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--ember)}
+h1{font:400 clamp(52px,9vw,112px)/.95 'Instrument Serif',serif;letter-spacing:-.01em;margin:18px 0 22px}
+h1 em{color:var(--ember)}
+.lede{max-width:640px;color:var(--ink-2);font-size:18px;margin:0}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;padding-bottom:72px}
+.card{display:flex;flex-direction:column;text-decoration:none;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;transition:border-color .2s,transform .2s}
+.card:hover,.card:focus-visible{border-color:rgba(255,181,99,.5);transform:translateY(-3px);outline:none}
+.card img{display:block;width:100%;height:auto;aspect-ratio:800/475;object-fit:cover;background:#000}
+.card .body{padding:20px 22px 24px;display:flex;flex-direction:column;gap:8px;flex:1}
+.num{font:500 11px/1 'IBM Plex Mono',monospace;letter-spacing:.12em;color:var(--faint)}
+.card h2{font:400 34px/1.05 'Instrument Serif',serif;margin:0}
+.card p{margin:0;color:var(--muted);font-size:15px}
+.go{margin-top:auto;padding-top:10px;font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--ember)}
+.notes{display:grid;grid-template-columns:1fr 1fr;gap:48px;border-top:1px solid var(--line);padding:56px 0 64px}
+.notes h3{font:400 28px/1.1 'Instrument Serif',serif;margin:0 0 12px}
+.notes p{margin:0 0 12px;color:var(--ink-2);font-size:15px}
+footer{border-top:1px solid var(--line);padding:28px 0 48px;color:var(--faint);font-size:13px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+@media (max-width:900px){.grid{grid-template-columns:1fr}.notes{grid-template-columns:1fr;gap:24px}header{padding:64px 0 40px}}
+@media (max-width:480px){.wrap{padding:0 16px}}
+@media (prefers-reduced-motion:reduce){.card{transition:none}.card:hover{transform:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker">Real-time general relativity in the browser</div>
+    <h1>Event <em>Horizon</em></h1>
+    <p class="lede">Three black hole simulators, ray-traced live on your graphics card. Light follows Einstein’s equations, not a painted backdrop. Each one says plainly what is real and what is invented.</p>
+  </header>
+
+  <main class="grid">
+    <a class="card" href="event-horizon/">
+      <img src="docs/event-horizon.png" alt="A black hole with a glowing accretion disk whose far side is bent up over the shadow" width="800" height="475">
+      <div class="body">
+        <span class="num">01</span>
+        <h2>Event Horizon</h2>
+        <p>Fly around a black hole, still or spinning. Every pixel’s light is traced along its real path, with Doppler beaming and gravitational redshift on the disk.</p>
+        <span class="go">Launch →</span>
+      </div>
+    </a>
+    <a class="card" href="recomposition/">
+      <img src="docs/recomposition.png" alt="A long spaceship forming out of a stream of debris beside a black hole" width="800" height="475">
+      <div class="body">
+        <span class="num">02</span>
+        <h2>The Recomposition</h2>
+        <p>A mothership climbs back out of a black hole and reassembles. It’s real spaghettification: 2,016 pieces, each falling on its own orbit, played backward.</p>
+        <span class="go">Launch →</span>
+      </div>
+    </a>
+    <a class="card" href="warp-strike/">
+      <img src="docs/warp-strike.png" alt="A blue-lit warp bubble beside a black hole, both bending the starlight around them" width="800" height="475">
+      <div class="body">
+        <span class="num">03</span>
+        <h2>Warp Strike</h2>
+        <p>A warp bubble as big as the black hole comes at it faster than light. You see it twice, once flying forward and once flying backward, because it outruns its own light.</p>
+        <span class="go">Launch →</span>
+      </div>
+    </a>
+  </main>
+
+  <section class="notes">
+    <div>
+      <h3>What’s computed</h3>
+      <p>Light paths through the Schwarzschild and Kerr spacetimes, integrated per pixel every frame. The disk’s color is a blackbody temperature, shifted by gravity and by the gas’s own speed.</p>
+      <p>In The Recomposition, every piece of the ship falls on its own exact orbit. Warp Strike traces light through an Alcubierre bubble laid over the black hole.</p>
+    </div>
+    <div>
+      <h3>What isn’t</h3>
+      <p>Nothing comes out of a real black hole, and no known matter can make a warp bubble. Those stories run on invented premises, and each simulator has a “What’s real” panel that says where the line is.</p>
+      <p>Needs WebGL2. A dedicated GPU makes it smooth; integrated graphics lowers the resolution to keep up.</p>
+    </div>
+  </section>
+
+  <footer>
+    <span>Made by <a href="https://github.com/DrJoeTruax">DrJoeTruax</a> with Claude.</span>
+    <a href="https://github.com/DrJoeTruax/event-horizon">Source on GitHub</a>
+  </footer>
+</div>
+</body>
+</html>

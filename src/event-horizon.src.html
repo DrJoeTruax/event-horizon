@@ -1,0 +1,1781 @@
+<title>Event Horizon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+/* Layout: a full-bleed live render; one glass instrument panel docks right on wide screens and becomes a bottom sheet on phones. */
+:root{
+  --void:#050407;
+  --ink:#F1EADF;
+  --ink-2:#D6CEC2;
+  --muted:#A1998E;
+  --faint:#6A645C;
+  --ember:#FFB563;
+  --ember-soft:rgba(255,181,99,.20);
+  --ember-line:rgba(255,181,99,.55);
+  --blue:#93C9FF;
+  --rose:#FF86B7;
+  --red:#FF6F5E;
+  --glass:rgba(15,13,17,.74);
+  --glass-2:rgba(255,240,220,.045);
+  --line:rgba(255,236,210,.10);
+  --line-2:rgba(255,236,210,.20);
+  --scrim:rgba(5,4,7,.62);
+  --f-display:"Instrument Serif","Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --f-body:"IBM Plex Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --panel-w:384px;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--void);color:var(--ink);font:15px/1.55 var(--f-body);overflow:hidden;-webkit-font-smoothing:antialiased}
+sub{font-size:.72em;line-height:0}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair;background:var(--void)}
+#gl.dragging{cursor:grabbing}
+
+.brand{position:fixed;left:28px;top:calc(22px + env(safe-area-inset-top,0px));pointer-events:none;max-width:calc(100vw - var(--panel-w) - 90px)}
+.brand h1{font:400 46px/0.95 var(--f-display);letter-spacing:.005em;margin:0}
+.brand h1 em{font-style:italic;color:var(--ember)}
+.brand p{margin:.6rem 0 0;color:var(--muted);font-size:13.5px;max-width:36ch}
+.brand .loading{font:12px var(--f-mono);color:var(--ember);letter-spacing:.06em}
+
+.hud{position:fixed;left:28px;bottom:calc(22px + env(safe-area-inset-bottom,0px));display:flex;flex-wrap:wrap;gap:4px 20px;font:12px/1.5 var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums;pointer-events:none;max-width:calc(100vw - var(--panel-w) - 90px)}
+.hud b{color:var(--ink);font-weight:500}
+
+.marks{position:fixed;inset:0;pointer-events:none}
+.ring-label{position:absolute;font:11.5px/1 var(--f-mono);color:var(--ink);white-space:nowrap;padding:5px 8px;border-radius:6px;background:var(--scrim);border:1px solid var(--line);opacity:0;transition:opacity .3s}
+.ring-label.horizon{color:var(--blue)}
+.pin{position:absolute;width:22px;height:22px;margin:-11px 0 0 -11px;border:1.5px solid var(--ember);border-radius:50%;box-shadow:0 0 14px var(--ember-line)}
+.pin::before,.pin::after{content:"";position:absolute;background:var(--ember)}
+.pin::before{left:50%;top:-7px;bottom:-7px;width:1px;margin-left:-.5px;opacity:.6}
+.pin::after{top:50%;left:-7px;right:-7px;height:1px;margin-top:-.5px;opacity:.6}
+
+.panel{position:fixed;top:calc(16px + env(safe-area-inset-top,0px));right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:var(--panel-w);box-sizing:border-box;display:flex;flex-direction:column;gap:18px;padding:18px 20px 22px;background:var(--glass);-webkit-backdrop-filter:blur(18px) saturate(1.15);backdrop-filter:blur(18px) saturate(1.15);border:1px solid var(--line);border-radius:16px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line-2) transparent}
+.sheet-toggle{display:none}
+
+.tour-nav{display:flex;align-items:center;gap:12px}
+.steps{display:flex;gap:5px;list-style:none;margin:0;padding:0;flex:1;min-width:0}
+.steps li{flex:1;min-width:0}
+.steps button{display:block;width:100%;height:22px;padding:0;border:0;background:none;cursor:pointer;position:relative}
+.steps button::after{content:"";position:absolute;left:0;right:0;top:10px;height:2px;border-radius:2px;background:var(--line-2);transition:background .3s}
+.steps button.done::after{background:var(--ember-line)}
+.steps button[aria-current="step"]::after{background:var(--ember);box-shadow:0 0 8px var(--ember-line)}
+.nav-btn{flex:none;width:36px;height:36px;border-radius:50%;border:1px solid var(--line-2);background:transparent;color:var(--ink);cursor:pointer;font:15px/1 var(--f-mono);display:grid;place-items:center;transition:border-color .2s,color .2s}
+.nav-btn:hover:not(:disabled){border-color:var(--ember);color:var(--ember)}
+.nav-btn:disabled{opacity:.28;cursor:default}
+
+.eyebrow{font:500 11px/1 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ember);margin:0 0 10px}
+.chapter h2{font:400 32px/1.04 var(--f-display);margin:0 0 14px;text-wrap:balance}
+.chapter p{margin:0 0 10px;color:var(--ink-2);font-size:14.5px}
+.chapter p:last-child{margin-bottom:0}
+.chapter b{color:var(--ink);font-weight:500}
+.key-amber{color:var(--ember)}.key-blue{color:var(--blue)}.key-pink{color:var(--rose)}
+
+.ctl{display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 12px;padding:10px 12px 8px;border:1px solid var(--line);border-radius:10px;background:var(--glass-2)}
+.ctl label{font-size:13px;color:var(--ink)}
+.ctl output{font:12px var(--f-mono);color:var(--ember);font-variant-numeric:tabular-nums}
+.ctl input[type=range]{grid-column:1/-1}
+.chapter .ctl,.chapter .sw,.chapter .ghost{margin-top:12px}
+.sw{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--glass-2);font-size:13px}
+.switch{flex:none;width:42px;height:24px;border-radius:12px;border:1px solid var(--line-2);background:var(--glass-2);position:relative;cursor:pointer;padding:0}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--muted);transition:transform .2s,background .2s}
+.switch[aria-checked="true"]{background:var(--ember-soft);border-color:var(--ember-line)}
+.switch[aria-checked="true"]::after{transform:translateX(18px);background:var(--ember)}
+.ghost{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;border:1px solid var(--line-2);background:transparent;color:var(--ink);font:500 12.5px var(--f-body);cursor:pointer;transition:border-color .2s,color .2s}
+.ghost:hover{border-color:var(--ember);color:var(--ember)}
+
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:24px;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--line-2);border-radius:2px}
+input[type=range]::-moz-range-track{height:2px;background:var(--line-2);border-radius:2px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:-6px;border-radius:50%;background:var(--ember);border:2px solid var(--void);box-shadow:0 0 0 1px var(--ember)}
+input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;background:var(--ember);border:2px solid var(--void)}
+input[type=range]:focus-visible{outline:none}
+input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 4px var(--ember-soft),0 0 0 1px var(--ember)}
+button:focus-visible,summary:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
+
+.inspector{border-top:1px solid var(--line);padding-top:16px}
+.sec-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px}
+.label{font:500 11px/1 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.mode{font:11.5px var(--f-mono);color:var(--faint)}
+#ray2d{width:100%;aspect-ratio:1.42;display:block;border-radius:10px;background:var(--void);border:1px solid var(--line)}
+.legend{display:flex;flex-wrap:wrap;gap:5px 14px;list-style:none;padding:0;margin:10px 0 0;font:11px var(--f-mono);color:var(--muted)}
+.legend i{display:inline-block;width:14px;height:2px;vertical-align:middle;margin-right:6px;border-radius:1px}
+.legend i.dash{background:repeating-linear-gradient(90deg,var(--muted) 0 3px,transparent 3px 6px)}
+.insp-text{font-size:13px;color:var(--ink-2);margin:10px 0 0;min-height:4.6em}
+.insp-text b{color:var(--ink);font-weight:500}
+
+details.drawer{border-top:1px solid var(--line);padding-top:14px}
+details.drawer summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center}
+details.drawer summary::-webkit-details-marker{display:none}
+details.drawer summary::after{content:"+";font:15px/1 var(--f-mono);color:var(--muted)}
+details.drawer[open] summary::after{content:"\2212"}
+.controls{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.controls .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.real{margin-top:12px;font-size:13px;color:var(--ink-2)}
+.real h3{font:500 11px/1 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ember);margin:16px 0 8px}
+.real h3:first-child{margin-top:4px}
+.real ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+.real li::marker{color:var(--faint)}
+.real .scale{margin:14px 0 0;color:var(--muted)}
+
+.view-tools{position:fixed;top:calc(22px + env(safe-area-inset-top,0px));right:calc(var(--panel-w) + 32px);display:flex;gap:8px;z-index:5;transition:right .35s ease}
+.view-tools .ghost{background:var(--scrim);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+body.immersive .view-tools{right:16px}
+.brand,.hud,.panel{transition:opacity .4s ease}
+body.immersive .brand,body.immersive .hud,body.immersive .panel{opacity:0;pointer-events:none}
+.toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);padding:10px 16px;border-radius:999px;background:var(--scrim);border:1px solid var(--line-2);color:var(--ink);font:13px var(--f-body);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);z-index:6;max-width:calc(100vw - 32px);text-align:center}
+.fallback{position:fixed;inset:0;display:grid;place-items:center;padding:24px;background:var(--void);color:var(--ink);text-align:center}
+.fallback div{max-width:46ch}
+.fallback h2{font:400 34px/1.1 var(--f-display);margin:0 0 12px}
+.fallback p{color:var(--muted);margin:0}
+
+@media (max-width: 860px){
+  :root{--panel-w:0px}
+  .brand{left:16px;top:calc(14px + env(safe-area-inset-top,0px));max-width:calc(100vw - 32px)}
+  .brand h1{font-size:30px}
+  .brand p{display:none}
+  .hud{left:16px;right:16px;top:calc(52px + env(safe-area-inset-top,0px));bottom:auto;font-size:10.5px;gap:2px 12px;max-width:none}
+  .panel{top:auto;left:8px;right:8px;width:auto;bottom:calc(8px + env(safe-area-inset-bottom,0px));max-height:min(46vh,430px);padding:6px 16px 18px;gap:14px;border-radius:18px;transition:max-height .35s ease}
+  .panel.expanded{max-height:80vh}
+  .view-tools{right:16px;top:calc(12px + env(safe-area-inset-top,0px))}
+  .view-tools .ghost{padding:6px 11px;font-size:12px}
+  .sheet-toggle{display:flex;justify-content:center;align-items:center;gap:8px;flex:none;width:100%;padding:6px 0 0;border:0;background:none;color:var(--muted);font:11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+  .sheet-toggle::before{content:"";width:36px;height:4px;border-radius:2px;background:var(--line-2)}
+  .chapter h2{font-size:26px;margin-bottom:10px}
+  .chapter p{font-size:14px}
+}
+@media (prefers-reduced-motion: reduce){
+  .panel,.switch::after,.ring-label{transition:none}
+}
+</style>
+
+<canvas id="gl" aria-label="A live ray-traced black hole. Drag to orbit, scroll or pinch to change distance, click to trace a ray."></canvas>
+<div class="marks" aria-hidden="true">
+  <div class="ring-label" id="lblShadow">shadow</div>
+  <div class="ring-label horizon" id="lblHorizon">horizon’s true size</div>
+  <div class="pin" id="pin" hidden></div>
+</div>
+
+<header class="brand">
+  <h1>Event <em>Horizon</em></h1>
+  <p>A black hole ray-traced from Einstein’s equations, live in your browser.</p>
+  <p class="loading" id="loading">Tracing light…</p>
+</header>
+<div class="hud" id="hud"></div>
+<div class="view-tools">
+  <button class="ghost" id="hideUi" aria-pressed="false" title="Hide the panel (H)">Hide panel</button>
+  <button class="ghost" id="fullBtn" title="Full screen (F)">Full screen</button>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<aside class="panel" id="panel" aria-label="Guided tour and controls">
+  <button class="sheet-toggle" id="sheetToggle" aria-expanded="false" aria-controls="panel">More</button>
+  <nav class="tour-nav" aria-label="Tour chapters">
+    <button class="nav-btn" id="prev" aria-label="Previous chapter">&larr;</button>
+    <ol class="steps" id="steps"></ol>
+    <button class="nav-btn" id="next" aria-label="Next chapter">&rarr;</button>
+  </nav>
+  <article class="chapter" id="chapter" aria-live="polite">
+    <p class="eyebrow" id="chapEyebrow"></p>
+    <h2 id="chapTitle"></h2>
+    <div id="chapBody"></div>
+  </article>
+
+  <section class="inspector" aria-label="Light path inspector">
+    <div class="sec-head"><span class="label">Light paths</span><span class="mode" id="inspMode"></span></div>
+    <canvas id="ray2d" aria-label="Diagram of light rays bending around the black hole"></canvas>
+    <ul class="legend">
+      <li><i style="background:var(--blue)"></i>reaches the stars</li>
+      <li><i style="background:var(--ember)"></i>ends on the disk</li>
+      <li><i style="background:var(--red)"></i>falls in</li>
+      <li><i class="dash"></i>photon sphere</li>
+    </ul>
+    <p class="insp-text" id="inspText"></p>
+  </section>
+
+  <details class="drawer" id="lab">
+    <summary><span class="label">Controls</span></summary>
+    <div class="controls">
+      <div class="ctl"><label for="l-R">Distance from center</label><output data-out="R"></output><input type="range" id="l-R" data-bind="R" data-scale="log" min="0.14" max="4.38" step="0.001"></div>
+      <div class="ctl"><label for="l-spin">Spin</label><output data-out="spin"></output><input type="range" id="l-spin" data-bind="spin" min="0" max="0.998" step="0.001"></div>
+      <div class="ctl"><label for="l-lens">Light bending</label><output data-out="lens"></output><input type="range" id="l-lens" data-bind="lens" min="0" max="1" step="0.01"></div>
+      <div class="ctl"><label for="l-Tpeak">Disk temperature</label><output data-out="Tpeak"></output><input type="range" id="l-Tpeak" data-bind="Tpeak" min="3000" max="14000" step="100"></div>
+      <div class="ctl"><label for="l-exposure">Exposure</label><output data-out="exposure"></output><input type="range" id="l-exposure" data-bind="exposure" min="0.3" max="4" step="0.01"></div>
+      <div class="ctl"><label for="l-bloom">Glow</label><output data-out="bloom"></output><input type="range" id="l-bloom" data-bind="bloom" min="0" max="1" step="0.01"></div>
+      <div class="ctl"><label for="l-speed">Disk speed</label><output data-out="speed"></output><input type="range" id="l-speed" data-bind="speed" min="0" max="4" step="0.1"></div>
+      <div class="ctl"><label for="l-fov">Field of view</label><output data-out="fov"></output><input type="range" id="l-fov" data-bind="fov" min="20" max="110" step="1"></div>
+      <div class="sw"><span id="lb-thick">Thick, glowing disk</span><button class="switch" role="switch" id="l-thick" data-toggle="thick" aria-labelledby="lb-thick"></button></div>
+      <div class="sw"><span id="lb-dopp">Doppler effect</span><button class="switch" role="switch" id="l-dopp" data-toggle="dopp" aria-labelledby="lb-dopp"></button></div>
+      <div class="sw"><span id="lb-grav">Gravitational redshift</span><button class="switch" role="switch" id="l-grav" data-toggle="grav" aria-labelledby="lb-grav"></button></div>
+      <div class="sw"><span id="lb-orders">Color by image order</span><button class="switch" role="switch" id="l-orders" data-toggle="orders" aria-labelledby="lb-orders"></button></div>
+      <div class="sw"><span id="lb-guides">Size guides</span><button class="switch" role="switch" id="l-guides" data-toggle="guides" aria-labelledby="lb-guides"></button></div>
+      <div class="sw"><span id="lb-stars">Stars and Milky Way</span><button class="switch" role="switch" id="l-stars" data-toggle="stars" aria-labelledby="lb-stars"></button></div>
+      <div class="sw"><span id="lb-auto">Slow orbit when idle</span><button class="switch" role="switch" id="l-auto" data-toggle="auto" aria-labelledby="lb-auto"></button></div>
+      <div class="row"><button class="ghost" id="resetView">Reset view</button><button class="ghost" id="restartTour">Restart tour</button></div>
+    </div>
+  </details>
+
+  <details class="drawer" id="real">
+    <summary><span class="label">What’s real here</span></summary>
+    <div class="real">
+      <h3>Computed exactly</h3>
+      <ul>
+        <li>Light paths: null geodesics of the Schwarzschild metric, or the Kerr metric once the hole spins, integrated for every pixel, every frame.</li>
+        <li>Your view: the aberration seen by an observer hovering at a fixed distance. With spin, that observer is carried around just enough to have no angular momentum.</li>
+        <li>Color and brightness: Doppler shift, gravitational redshift and beaming applied to blackbody light. A frequency shift of g turns a temperature T into gT.</li>
+        <li>The disk: gas on circular orbits at the correct orbital speed, from the innermost stable orbit (3 r<sub>s</sub> without spin, under 1 r<sub>s</sub> at high spin) outward.</li>
+        <li>Hot clumps: each one moves at the orbital speed for its radius, so the inside of a clump outruns the outside and it shears into a spiral arc.</li>
+      </ul>
+      <h3>Simplified</h3>
+      <ul>
+        <li>The disk’s temperature is scaled into visible light. Real disks are much hotter and glow in ultraviolet or X-rays. Its profile uses the non-spinning formula.</li>
+        <li>The disk’s thickness is a smooth glow, and its fine turbulence is a texture rather than a fluid simulation.</li>
+        <li>When you point at the image, the panel flattens spinning-hole rays onto one plane.</li>
+        <li>The time light takes to cross the scene is ignored.</li>
+      </ul>
+      <p class="scale">Scale: r<sub>s</sub> is the event horizon’s radius. It is about 30 km for a black hole of 10 suns, and about 130 au for M87*.</p>
+    </div>
+  </details>
+</aside>
+
+<div class="fallback" id="fallback" hidden><div><h2>The light can’t be traced here</h2><p id="fallbackMsg"></p></div></div>
+
+<script>
+(() => {
+'use strict';
+const $ = (s) => document.querySelector(s);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const ease = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const V = {
+  add: (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]],
+  sub: (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]],
+  mul: (a, s) => [a[0] * s, a[1] * s, a[2] * s],
+  dot: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2],
+  cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
+  len: (a) => Math.hypot(a[0], a[1], a[2]),
+  norm: (a) => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; },
+};
+const DISK_OUT = 13.0, BCRIT = 2.598076211353316;
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function showFallback(msg) {
+  $('#fallbackMsg').textContent = msg;
+  $('#fallback').hidden = false;
+}
+
+/* ---------------------------------------------------------------- blackbody */
+function cie(l) {
+  const g = (x, m, s1, s2) => { const t = (x - m) / (x < m ? s1 : s2); return Math.exp(-0.5 * t * t); };
+  return [
+    1.056 * g(l, 599.8, 37.9, 31.0) + 0.362 * g(l, 442.0, 16.0, 26.7) - 0.065 * g(l, 501.1, 20.4, 26.2),
+    0.821 * g(l, 568.8, 46.9, 40.5) + 0.286 * g(l, 530.9, 16.3, 31.1),
+    1.217 * g(l, 437.0, 11.8, 36.0) + 0.681 * g(l, 459.0, 26.0, 13.8),
+  ];
+}
+const CMF = []; for (let l = 380; l <= 780; l += 5) CMF.push([l, cie(l)]);
+function bbRGB(T) {
+  let X = 0, Y = 0, Z = 0;
+  for (const [l, c] of CMF) {
+    const b = Math.pow(l * 1e-3, -5) / (Math.exp(1.4387769e7 / (l * T)) - 1);
+    X += b * c[0]; Y += b * c[1]; Z += b * c[2];
+  }
+  return [
+    Math.max(0, 3.2406 * X - 1.5372 * Y - 0.4986 * Z),
+    Math.max(0, -0.9689 * X + 1.8758 * Y + 0.0415 * Z),
+    Math.max(0, 0.0557 * X - 0.2040 * Y + 1.0570 * Z),
+  ];
+}
+const lum = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+const Y_REF = lum(bbRGB(6500));
+const bbLum = (T) => lum(bbRGB(T)) / Y_REF;
+function buildBBTable() {
+  const N = 512, data = new Float32Array(N * 4);
+  const a = Math.log(300), b = Math.log(100000);
+  for (let i = 0; i < N; i++) {
+    const T = Math.exp(a + (b - a) * i / (N - 1));
+    const c = bbRGB(T), Y = Math.max(lum(c), 1e-300);
+    data[i * 4] = c[0] / Y; data[i * 4 + 1] = c[1] / Y; data[i * 4 + 2] = c[2] / Y;
+    data[i * 4 + 3] = Math.max(Math.log(Y / Y_REF), -80);
+  }
+  return data;
+}
+function diskTemp(r, rin) { return Math.pow(3 / r, 0.75) * Math.pow(Math.max(1 - Math.sqrt(rin / r), 0), 0.25) / 0.48807; }
+
+/* ---------------------------------------------------------------- shaders */
+const VS = `#version 300 es
+layout(location=0) in vec2 aPos;
+out vec2 vUv;
+void main(){ vUv = aPos * 0.5 + 0.5; gl_Position = vec4(aPos, 0.0, 1.0); }`;
+
+const NOISE = `
+vec3 hg(vec3 p){ p = fract(p * vec3(0.1031, 0.1030, 0.0973)); p += dot(p, p.yxz + 33.33); return fract((p.xxy + p.yxx) * p.zyx) * 2.0 - 1.0; }
+vec3 hu(vec3 p){ p = fract(p * vec3(0.1031, 0.1030, 0.0973)); p += dot(p, p.yxz + 33.33); return fract((p.xxy + p.yxx) * p.zyx); }
+float gnoise(vec3 p){
+  vec3 i = floor(p), f = fract(p);
+  vec3 w = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+  float a = dot(hg(i), f);
+  float b = dot(hg(i + vec3(1,0,0)), f - vec3(1,0,0));
+  float c = dot(hg(i + vec3(0,1,0)), f - vec3(0,1,0));
+  float d = dot(hg(i + vec3(1,1,0)), f - vec3(1,1,0));
+  float e = dot(hg(i + vec3(0,0,1)), f - vec3(0,0,1));
+  float g = dot(hg(i + vec3(1,0,1)), f - vec3(1,0,1));
+  float h = dot(hg(i + vec3(0,1,1)), f - vec3(0,1,1));
+  float k = dot(hg(i + vec3(1,1,1)), f - vec3(1,1,1));
+  return mix(mix(mix(a, b, w.x), mix(c, d, w.x), w.y), mix(mix(e, g, w.x), mix(h, k, w.x), w.y), w.z);
+}
+float fbm(vec3 p){ float s = 0.0, a = 0.5; for (int i = 0; i < 5; i++){ s += a * gnoise(p); p = p * 2.02 + vec3(1.7, 9.2, 3.1); a *= 0.5; } return s * 1.6; }
+`;
+
+const SKY_FS = `#version 300 es
+precision highp float;
+in vec2 vUv; out vec4 o;
+uniform int uFace;
+${NOISE}
+vec3 faceDir(int f, vec2 uv){
+  float sc = uv.x * 2.0 - 1.0, tc = uv.y * 2.0 - 1.0;
+  if (f == 0) return vec3(1.0, -tc, -sc);
+  if (f == 1) return vec3(-1.0, -tc, sc);
+  if (f == 2) return vec3(sc, 1.0, tc);
+  if (f == 3) return vec3(sc, -1.0, -tc);
+  if (f == 4) return vec3(sc, -tc, 1.0);
+  return vec3(-sc, -tc, -1.0);
+}
+vec3 skyCol(vec3 d){
+  vec3 pole = normalize(vec3(-0.38, 0.86, 0.34));
+  vec3 g0 = normalize(vec3(0.25, 0.1, -1.0));
+  vec3 gc = normalize(g0 - pole * dot(g0, pole));
+  float lat = dot(d, pole);
+  vec3 dp = d - pole * lat;
+  float lon = acos(clamp(dot(dp / max(length(dp), 1e-5), gc), -1.0, 1.0));
+  float core = exp(-lat * lat / (2.0 * 0.075 * 0.075));
+  float band = exp(-lat * lat / (2.0 * 0.21 * 0.21));
+  float bulge = exp(-lon * lon / (2.0 * 0.5 * 0.5)) * exp(-lat * lat / (2.0 * 0.15 * 0.15));
+  float lonFall = 0.35 + 0.65 * exp(-lon * lon / (2.0 * 1.3 * 1.3));
+  float n1 = fbm(d * 3.0 + 1.3) * 0.5 + 0.5;
+  float n2 = fbm(d * 8.0 + 5.1) * 0.5 + 0.5;
+  float n3 = fbm(d * 26.0 + 9.7) * 0.5 + 0.5;
+  float clouds = (core * 1.3 + band * 0.32) * lonFall * (0.3 + 1.4 * n1 * n2) * (0.5 + 1.0 * n3);
+  clouds += bulge * 1.7 * (0.55 + 0.7 * n2);
+  float dn = fbm(d * 6.0 + 17.0) * 0.5 + 0.5;
+  float off = lat - 0.014 * sin(lon * 7.0);
+  float dust = smoothstep(0.42, 0.7, dn) * exp(-off * off / (2.0 * 0.045 * 0.045));
+  dust = max(dust, 0.7 * smoothstep(0.52, 0.8, fbm(d * 15.0 + 3.0) * 0.5 + 0.5) * core);
+  vec3 warm = vec3(1.0, 0.78, 0.56), cool = vec3(0.70, 0.79, 1.0);
+  vec3 c = mix(cool, warm, clamp(bulge * 1.5 + 0.2, 0.0, 1.0)) * clouds * (1.0 - 0.88 * dust);
+  float neb = pow(max(fbm(d * 5.0 + 41.0) * 0.5 + 0.5 - 0.6, 0.0) * 3.2, 2.0) * band;
+  c += vec3(1.0, 0.30, 0.36) * neb * 0.8;
+  c += vec3(0.55, 0.6, 0.78) * 0.035;
+  return c * 0.05;
+}
+float h12(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+void main(){
+  vec3 d = normalize(faceDir(uFace, vUv));
+  vec3 c = skyCol(d);
+  vec3 e = (log2(max(c, vec3(1e-7))) + 16.0) / 18.0;
+  e += (h12(gl_FragCoord.xy + float(uFace) * 37.0) - 0.5) / 255.0;
+  o = vec4(clamp(e, 0.0, 1.0), 1.0);
+}`;
+
+const SCENE_FS = `#version 300 es
+precision highp float;
+in vec2 vUv; out vec4 o;
+uniform vec2 uRes, uShift, uJitter;
+uniform vec3 uCamPos, uCamRight, uCamUp, uCamFwd;
+uniform float uTanHalf, uAspect, uTime, uFrame;
+uniform float uLens, uDopp, uGrav, uOrders, uGuides, uStars;
+uniform float uTpeak, uEmit, uDiskOut, uHdr;
+uniform float uSpin, uRin, uRh, uKerr, uThick, uVolN;
+uniform vec4 uBlob[12];
+uniform float uBlobAge[12];
+uniform samplerCube uSky;
+uniform sampler2D uBB, uDiskTex;
+#define PI 3.14159265359
+#define BCRIT 2.5980762
+const float M = 0.5;
+float gLod = 0.0;
+const float LTMIN = 5.7037825;
+const float LTMAX = 11.5129255;
+${NOISE}
+float h12(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+vec4 bbTex(float T){
+  float x = clamp((log(max(T, 300.0)) - LTMIN) / (LTMAX - LTMIN), 0.0, 1.0);
+  return texture(uBB, vec2(x * (511.0 / 512.0) + 0.5 / 512.0, 0.5));
+}
+vec3 blackbody(float T){ vec4 t = bbTex(T); return t.rgb * exp(t.a); }
+// thin-disk profile: same outer temperatures at any spin; a closer inner edge makes the inside hotter
+float diskTemp(float r){ return pow(3.0 / r, 0.75) * pow(max(1.0 - sqrt(uRin / r), 0.0), 0.25) / 0.48807; }
+// prograde circular orbit, Boyer-Lindquist angular velocity (Kerr; reduces to Kepler at zero spin)
+float omegaK(float r){ return sqrt(M) / (pow(r, 1.5) + uSpin * sqrt(M)); }
+// Turbulence is precomputed once into a polar texture (angle across, radius down) and looked up here.
+float diskNoise(float r, float a, float seed, float fineAmt){
+  vec2 t = textureLod(uDiskTex, vec2(a / 6.2831853 + seed * 0.37, (r + seed * 0.14) / 32.0), gLod).rg;
+  return (t.r - 0.5) / 0.45 + fineAmt * 0.75 * (t.g - 0.5);
+}
+// Hot clumps born at random radii. Each one is advected exactly at the local orbital speed,
+// so differential rotation shears it into a trailing spiral arc as it ages.
+float clumps(float r, float ang, float Om){
+  float s = 0.0;
+  for (int i = 0; i < 10; i++){
+    vec4 bl = uBlob[i];
+    float dr = (r - bl.x) / (0.25 + 0.12 * bl.x);
+    if (abs(dr) > 3.0) continue;
+    float d = ang + Om * uBlobAge[i] - bl.y;
+    d -= 6.2831853 * floor((d + 3.14159265) / 6.2831853);
+    s += exp(-dr * dr - d * d / (bl.z * bl.z)) * bl.w;
+  }
+  return s;
+}
+vec2 diskDensity(float r, float ang, float y, float fineAmt){
+  float env = smoothstep(uRin, uRin + 0.9, r) * (1.0 - smoothstep(uDiskOut * 0.6, uDiskOut, r));
+  if (env <= 0.0) return vec2(0.0);
+  float Om = omegaK(r);
+  // Gas turns at its orbital rate. The pattern renews every Pd time units, cross-fading
+  // into the next cycle near the end so differential rotation never winds it too tight.
+  float Pd = 600.0;
+  float ph = uTime / Pd;
+  float f = fract(ph), cyc = floor(ph);
+  float ra = ang + Om * f * Pd;
+  float n = diskNoise(r, ra, fract(cyc * 0.6180339) * 97.0, fineAmt);
+  if (f > 0.9){
+    float w = smoothstep(0.9, 1.0, f);
+    float n2 = diskNoise(r, ang + Om * (f - 1.0) * Pd, fract((cyc + 1.0) * 0.6180339) * 97.0, fineAmt);
+    n = ((1.0 - w) * n + w * n2) / sqrt((1.0 - w) * (1.0 - w) + w * w);
+  }
+  if (uThick > 0.5) n += 0.3 * (textureLod(uDiskTex, vec2(ra / 6.2831853 + 0.5, (r + 2.5 * y + 17.0) / 32.0), gLod).r - 0.5) / 0.45;
+  float rings = 0.5 + 0.5 * sin(r * 6.0 + n * 4.0);
+  float c = clumps(r, ang, Om);
+  float contrast = uThick > 0.5 ? 2.3 : 1.6;
+  return vec2(env * (clamp(0.5 + contrast * n, 0.04, 2.1) * (0.66 + 0.5 * rings) + 1.5 * c), c);
+}
+// Light from gas at radius r reaching the camera. Lz is the photon's angular momentum about the
+// spin axis per unit energy; camF converts energy at infinity to energy measured by the camera.
+vec3 diskLight(float r, float heat, float Lz, float camF, int nCross){
+  float Om = omegaK(r);
+  float a = uSpin;
+  float A = 1.0 - 2.0 * M / r + 4.0 * M * a * Om / r - (r * r + a * a + 2.0 * M * a * a / r) * Om * Om;
+  float ut = inversesqrt(max(A, 1e-4));
+  float gG = camF * sqrt(max(1.0 - 2.0 * M / r, 1e-3));
+  float gT = camF / (ut * max(1.0 - Om * Lz, 1e-3));
+  float g = pow(gG, uGrav) * pow(gT / gG, uDopp);
+  vec3 Bc = blackbody(uTpeak * diskTemp(r) * (1.0 + 0.3 * heat) * g) * uEmit;
+  vec3 tint = nCross == 0 ? vec3(1.0, 0.5, 0.1) : (nCross == 1 ? vec3(0.18, 0.55, 1.0) : vec3(1.0, 0.22, 0.72));
+  vec3 oc = tint * (0.08 + 0.32 * sqrt(dot(Bc, vec3(0.2126, 0.7152, 0.0722)))) * (nCross >= 2 ? 3.0 : 1.0);
+  return mix(Bc, oc, uOrders);
+}
+// Adds the disk around one crossing of its midplane. Pc: crossing point, T: unit direction the
+// traced ray is heading. Thin mode treats the disk as a sheet; thick mode marches through a
+// glowing slab whose height grows with radius, along the local straight-line path.
+void shadeCrossing(vec3 Pc, vec3 T, int nCross, float Lz, float camF, float jit, inout vec3 col, inout float trans){
+  float rc = length(Pc.xz);
+  gLod = max(log2(max(length(Pc - uCamPos) * (2.0 * uTanHalf / uRes.y) * 32.0 / max(abs(T.y), 0.3), 1.0)) - 0.7, 0.0);
+  if (uThick < 0.5){
+    if (rc <= uRin || rc >= uDiskOut) return;
+    float cosInc = abs(T.y);
+    vec2 dh = diskDensity(rc, atan(Pc.z, Pc.x), 0.0, smoothstep(0.06, 0.35, cosInc));
+    float alpha = 1.0 - exp(-dh.x * 2.4 / max(cosInc, 0.04));
+    col += trans * alpha * diskLight(rc, dh.y, Lz, camF, nCross);
+    trans *= 1.0 - alpha;
+    return;
+  }
+  float Ty = max(abs(T.y), 0.07);
+  float Hc = 0.07 * rc + 0.12;
+  float Lseg = min(2.8 * Hc / Ty, 3.5);
+  float ds = Lseg / uVolN;
+  float fineAmt = 0.4 + 0.6 * smoothstep(0.06, 0.35, Ty);
+  // color is set by radius, which changes little across the slab: compute it once per crossing
+  vec3 base = diskLight(clamp(rc, uRin * 1.02, uDiskOut), 0.0, Lz, camF, nCross);
+  for (int j = 0; j < 10; j++){
+    if (float(j) >= uVolN) break;
+    vec3 Ps = Pc + T * (-0.5 * Lseg + (float(j) + jit) * ds);
+    float r = length(Ps.xz);
+    if (r <= uRin || r >= uDiskOut) continue;
+    float h = 0.07 * r + 0.12;
+    float vert = exp(-2.0 * Ps.y * Ps.y / (h * h));
+    if (vert < 0.02) continue;
+    vec2 dh = diskDensity(r, atan(Ps.z, Ps.x), Ps.y / h, fineAmt);
+    float alpha = 1.0 - exp(-dh.x * vert * ds * 2.4 / (1.2533 * h));
+    if (alpha < 1e-4) continue;
+    col += trans * alpha * base * (1.0 + 1.3 * dh.y) * smoothstep(uRin, uRin + 0.6, r);
+    trans *= 1.0 - alpha;
+    if (trans < 0.004) break;
+  }
+}
+vec3 starLayer(vec3 D, float foot, float scale, float prob, float bright, float seed){
+  vec3 c = floor(D * scale);
+  vec3 h = hu(c + seed);
+  vec3 S = normalize(c + 0.25 + 0.5 * hu(c + seed + 19.19));
+  vec3 Sq = S * scale;
+  bool ok = h.x < prob && all(greaterThan(Sq, c + 0.15)) && all(lessThan(Sq, c + 0.85));
+  float sig0 = 0.00032;
+  float sig = max(sig0, 0.6 * foot);
+  vec3 dv = D - S;
+  float mag = min(pow(max(h.y, 0.002), -0.85), 25.0);
+  float I = bright * mag * (sig0 * sig0) / (sig * sig) * exp(-0.5 * dot(dv, dv) / (sig * sig));
+  float Ts = h.z < 0.12 ? mix(12000.0, 26000.0, h.z / 0.12) : mix(3100.0, 8000.0, pow((h.z - 0.12) / 0.88, 1.6));
+  vec3 s = ok ? I * bbTex(Ts).rgb : vec3(0.0);
+  float lod = smoothstep(0.1, 0.25, sig * scale);
+  vec3 avg = vec3(bright * 3.8 * 6.2832 * sig0 * sig0 * prob * 0.45 * scale * scale);
+  return mix(s, avg, lod);
+}
+// Kerr null geodesics in Boyer-Lindquist coordinates, Mino time, second-order form.
+float kRp(float r, float L, float a, float K){ return 2.0 * r * ((r * r + a * a) - a * L) - (r - M) * K; }
+float kTp(float t, float L, float a){ float s = sin(t), c = cos(t); float ss = max(s, 2e-3); return -a * a * c * s + L * L * c / (ss * ss * ss); }
+float kPd(float r, float t, float L, float a){ float s = max(abs(sin(t)), 2e-3); float del = r * r - 2.0 * M * r + a * a; return -(a / del * ((r * r + a * a) - a * L) - a + L / (s * s)); }
+vec3 blCart(float r, float t, float p, float a){ float rho = sqrt(r * r + a * a) * sin(t); return vec3(rho * cos(p), r * cos(t), -rho * sin(p)); }
+
+void main(){
+  vec2 ndc = ((gl_FragCoord.xy + uJitter) / uRes) * 2.0 - 1.0 - uShift;
+  vec3 d = normalize(uCamFwd + ndc.x * uAspect * uTanHalf * uCamRight + ndc.y * uTanHalf * uCamUp);
+  float r0 = length(uCamPos);
+  vec3 e1 = uCamPos / r0;
+  vec3 col = vec3(0.0);
+  float trans = 1.0;
+  bool escaped = false;
+  vec3 D = e1;
+  float skyG = 1.0;
+  float jit = fract(h12(gl_FragCoord.xy) + uFrame * 0.6180339);
+
+  if (uKerr < 0.5){
+    // Non-spinning: each ray stays in one plane, so integrate u = 1/r against the orbit angle.
+    float cpsi = dot(d, e1);
+    vec3 tv = d - cpsi * e1;
+    float spsi = length(tv);
+    vec3 e2 = spsi > 1e-7 ? tv / spsi : normalize(cross(e1, abs(e1.y) < 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0)));
+    spsi = max(spsi, 1e-7);
+    vec3 nrm = cross(e1, e2);
+    float k = uLens;
+    float u = 1.0 / r0;
+    float lapse0 = sqrt(max(1.0 - k * u, 1e-5));
+    float up = -u * lapse0 * cpsi / spsi;
+    float b = spsi / (u * lapse0);
+    float A = e1.y, B = e2.y;
+    float phiC = 1e9;
+    if (abs(A) + abs(B) > 1e-6){ phiC = mod(atan(B, A) + 0.5 * PI, PI); if (phiC < 1e-4) phiC += PI; }
+    float camF = inversesqrt(max(1.0 - u, 1e-5));
+    skyG = camF;
+    float Lz = -b * nrm.y;
+    float phi = 0.0;
+    int nCross = 0;
+    for (int i = 0; i < 360; i++){
+      float h = min(0.18, 0.22 * u / max(abs(up), 1e-6));
+      h = max(h, 2e-4);
+      bool isCross = false;
+      if (phi + h >= phiC){ h = phiC - phi; isCross = true; }
+      float k1u = up,                 k1p = 1.5 * k * u * u - u;
+      float u2 = u + 0.5 * h * k1u;   float k2u = up + 0.5 * h * k1p, k2p = 1.5 * k * u2 * u2 - u2;
+      float u3 = u + 0.5 * h * k2u;   float k3u = up + 0.5 * h * k2p, k3p = 1.5 * k * u3 * u3 - u3;
+      float u4 = u + h * k3u;         float k4u = up + h * k3p,       k4p = 1.5 * k * u4 * u4 - u4;
+      u  += h / 6.0 * (k1u + 2.0 * k2u + 2.0 * k3u + k4u);
+      up += h / 6.0 * (k1p + 2.0 * k2p + 2.0 * k3p + k4p);
+      phi += h;
+      if (u >= 1.0) break;
+      if (isCross){
+        float r = 1.0 / u;
+        if (r > uRin * 0.8 && r < uDiskOut + 2.0){
+          vec3 rad = cos(phi) * e1 + sin(phi) * e2;
+          vec3 tng = -sin(phi) * e1 + cos(phi) * e2;
+          shadeCrossing(rad * r, normalize(tng / u - rad * up / (u * u)), nCross, Lz, camF, jit, col, trans);
+        }
+        nCross++;
+        phiC += PI;
+      }
+      if (up < 0.0 && u < 0.04){ escaped = true; break; }
+      if (trans < 0.004) break;
+    }
+    // Straight-line extrapolation to infinity, plus the weak-field bending still to come.
+    float pinf = phi + atan(u, -up) + k * (1.0 - sqrt(max(1.0 - b * b * u * u, 0.0))) / b;
+    D = escaped ? cos(pinf) * e1 + sin(pinf) * e2 : normalize(cos(phi) * e1 + sin(phi) * e2);
+  } else {
+    // Spinning: full Kerr geodesic. The camera is a zero-angular-momentum observer; the photon's
+    // constants of motion (L, Q) come from its direction in that observer's frame.
+    float a = uSpin;
+    float th = acos(clamp(e1.y, -1.0, 1.0));
+    vec3 ephi = normalize(cross(vec3(0.0, 1.0, 0.0), e1));
+    vec3 eth = cross(ephi, e1);
+    float nr = dot(d, e1), nth = dot(d, eth), nph = dot(d, ephi);
+    float r = r0;
+    float st = sin(th), ct = cos(th);
+    float Sig = r * r + a * a * ct * ct, Del = r * r - 2.0 * M * r + a * a;
+    float Ab = (r * r + a * a) * (r * r + a * a) - a * a * Del * st * st;
+    float alp = sqrt(Sig * Del / Ab), om = 2.0 * M * a * r / Ab, varpi = sqrt(Ab / Sig) * st;
+    float La = -varpi * nph;
+    float Ea = alp + om * La;
+    float L = La / Ea;
+    float pthA = sqrt(Sig) * (-nth) / Ea;
+    float Q = pthA * pthA + ct * ct * (L * L / (st * st) - a * a);
+    float K = (L - a) * (L - a) + Q;
+    float pr = sqrt(Sig * Del) * nr / Ea;
+    float pth = sqrt(Sig) * nth / Ea;
+    float ph = atan(-e1.z, e1.x);
+    float camF = 1.0 / Ea;
+    skyG = 1.0 / alp;
+    vec3 Pp = blCart(r, th, ph, a);
+    float cPrev = cos(th);
+    int nCross = 0;
+    for (int i = 0; i < 300; i++){
+      float f0 = kPd(r, th, L, a);
+      float s0 = max(sin(th), 2e-3);
+      float dl = 0.16 / (abs(pr) / r + abs(pth) + abs(f0) * max(sin(th), 0.05) + 1e-5);
+      // near the spin axis, take small angular steps so the ray can be carried over it cleanly
+      dl = min(dl, max(0.15 * s0, 0.004) / (sqrt(pth * pth + L * L / (s0 * s0)) + 1e-5));
+      float r1 = pr, t1 = pth, p1 = f0, q1 = kRp(r, L, a, K), w1 = kTp(th, L, a);
+      float rB = r + 0.5 * dl * r1, tB = th + 0.5 * dl * t1, prB = pr + 0.5 * dl * q1, ptB = pth + 0.5 * dl * w1;
+      float r2 = prB, t2 = ptB, p2 = kPd(rB, tB, L, a), q2 = kRp(rB, L, a, K), w2 = kTp(tB, L, a);
+      float rC = r + 0.5 * dl * r2, tC = th + 0.5 * dl * t2, prC = pr + 0.5 * dl * q2, ptC = pth + 0.5 * dl * w2;
+      float r3 = prC, t3 = ptC, p3 = kPd(rC, tC, L, a), q3 = kRp(rC, L, a, K), w3 = kTp(tC, L, a);
+      float rD = r + dl * r3, tD = th + dl * t3, prD = pr + dl * q3, ptD = pth + dl * w3;
+      float r4 = prD, t4 = ptD, p4 = kPd(rD, tD, L, a), q4 = kRp(rD, L, a, K), w4 = kTp(tD, L, a);
+      r   += dl / 6.0 * (r1 + 2.0 * r2 + 2.0 * r3 + r4);
+      th  += dl / 6.0 * (t1 + 2.0 * t2 + 2.0 * t3 + t4);
+      ph  += dl / 6.0 * (p1 + 2.0 * p2 + 2.0 * p3 + p4);
+      pr  += dl / 6.0 * (q1 + 2.0 * q2 + 2.0 * q3 + q4);
+      pth += dl / 6.0 * (w1 + 2.0 * w2 + 2.0 * w3 + w4);
+      // passing over the axis: (r, -th, ph) is the same point as (r, th, ph + pi)
+      if (th < 0.0){ th = -th; pth = -pth; ph += PI; }
+      else if (th > PI){ th = 2.0 * PI - th; pth = -pth; ph += PI; }
+      // Away from turning points, put the speeds back on the exact conserved values; tiny
+      // errors in the huge far-field radial speed would otherwise fake a bounce near the hole.
+      float W = r * r + a * a - a * L;
+      float Rr = W * W - (r * r - 2.0 * M * r + a * a) * K;
+      if (Rr > 0.02 * W * W) pr = sign(pr) * sqrt(Rr);
+      float ctn = cos(th), stn = max(sin(th), 1e-3);
+      float Th = Q + a * a * ctn * ctn - L * L * ctn * ctn / (stn * stn);
+      if (Th > 0.02 * (Q + a * a) + 1e-4) pth = sign(pth) * sqrt(Th);
+      if (r < uRh + 0.02) break;
+      vec3 Pn = blCart(r, th, ph, a);
+      float cn = cos(th);
+      if (cn * cPrev < 0.0){
+        float t = cPrev / (cPrev - cn);
+        shadeCrossing(mix(Pp, Pn, t), normalize(Pn - Pp), nCross, L, camF, jit, col, trans);
+        nCross++;
+      }
+      if (r > 60.0 && pr > 0.0){ escaped = true; D = normalize(Pn - Pp); break; }
+      Pp = Pn; cPrev = cn;
+      if (trans < 0.004) break;
+    }
+    if (!escaped) D = normalize(Pp);
+  }
+
+  vec3 dDx = dFdx(D), dDy = dFdy(D);
+  float foot = max(length(dDx), length(dDy));
+  vec3 sky = exp2(textureGrad(uSky, D, dDx, dDy).rgb * 18.0 - 16.0);
+  sky += starLayer(D, foot, 64.0, 0.42, 0.9, 0.0) + starLayer(D, foot, 150.0, 0.5, 0.22, 71.3);
+  sky *= blackbody(5800.0 * pow(skyG, uGrav)) / blackbody(5800.0) * uStars;
+  if (escaped) col += trans * sky;
+
+  if (uGuides > 0.001 && uKerr < 0.5){
+    vec3 toBH = -e1;
+    float ang = acos(clamp(dot(d, toBH), -1.0, 1.0));
+    float pix = 2.0 * uTanHalf / uRes.y;
+    float uc = 1.0 / r0;
+    float sinSh = BCRIT * sqrt(max(1.0 - uc, 0.0)) * uc;
+    float angSh = r0 >= 1.5 ? asin(min(sinSh, 1.0)) : PI - asin(min(sinSh, 1.0));
+    float angH = asin(min(uc, 1.0));
+    vec3 ax1 = normalize(cross(toBH, abs(toBH.y) < 0.95 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0)));
+    vec3 ax2 = cross(toBH, ax1);
+    float th2 = atan(dot(d, ax2), dot(d, ax1));
+    float dash = step(0.42, fract(th2 * 64.0 / (2.0 * PI)));
+    float l1 = 1.0 - smoothstep(0.5 * pix, 1.6 * pix, abs(ang - angSh));
+    float l2 = (1.0 - smoothstep(0.5 * pix, 1.6 * pix, abs(ang - angH))) * dash;
+    col = mix(col, vec3(1.7, 1.2, 0.75), l1 * uGuides * 0.85);
+    col = mix(col, vec3(0.75, 1.1, 1.6), l2 * uGuides * 0.95);
+  }
+  o = uHdr > 0.5 ? vec4(col, 1.0) : vec4(sqrt(clamp(col / 16.0, 0.0, 1.0)), 1.0);
+}`;
+
+const ACC_FS = `#version 300 es
+precision highp float;
+in vec2 vUv; out vec4 o;
+uniform sampler2D uCur, uPrev;
+uniform float uAlpha;
+void main(){ o = vec4(mix(texture(uPrev, vUv).rgb, texture(uCur, vUv).rgb, uAlpha), 1.0); }`;
+
+const NOISE_FS = `#version 300 es
+precision highp float;
+in vec2 vUv; out vec4 o;
+${NOISE}
+void main(){
+  float a = vUv.x * 6.2831853, r = vUv.y * 32.0;
+  vec3 p = vec3(cos(a) * 1.8, sin(a) * 1.8, r * 1.3);
+  float s = 0.0, amp = 0.6;
+  for (int i = 0; i < 4; i++){ s += amp * gnoise(p); p = p * vec3(2.0, 2.0, 2.4) + vec3(3.1, 1.7, 5.3); amp *= 0.55; }
+  float fine = gnoise(vec3(cos(a) * 0.9, sin(a) * 0.9, r * 10.0));
+  o = vec4(clamp(s * 0.45 + 0.5, 0.0, 1.0), clamp(fine * 0.6 + 0.5, 0.0, 1.0), 0.0, 1.0);
+}`;
+
+const DOWN_FS = `#version 300 es
+precision highp float;
+in vec2 vUv; out vec4 o;
+uniform sampler2D uSrc; uniform vec2 uTexel; uniform int uFirst;
+vec3 S(vec2 d){ return texture(uSrc, vUv + d * uTexel).rgb; }
+float kw(vec3 c){ return 1.0 / (1.0 + dot(c, vec3(0.2126, 0.7152, 0.0722))); }
+void main(){
+  vec3 a = S(vec2(-2, 2)), b = S(vec2(0, 2)), c = S(vec2(2, 2));
+  vec3 d = S(vec2(-2, 0)), e = S(vec2(0, 0)), f = S(vec2(2, 0));
+  vec3 g = S(vec2(-2, -2)), h = S(vec2(0, -2)), i = S(vec2(2, -2));
+  vec3 j = S(vec2(-1, 1)), k = S(vec2(1, 1)), l = S(vec2(-1, -1)), m = S(vec2(1, -1));
+  vec3 r;
+  if (uFirst == 1){
+    vec3 g0 = (j + k + l + m) * 0.25, g1 = (a + b + d + e) * 0.25, g2 = (b + c + e + f) * 0.25, g3 = (d + e + g + h) * 0.25, g4 = (e + f + h + i) * 0.25;
+    float w0 = kw(g0) * 0.5, w1 = kw(g1) * 0.125, w2 = kw(g2) * 0.125, w3 = kw(g3) * 0.125, w4 = kw(g4) * 0.125;
+    r = (g0 * w0 + g1 * w1 + g2 * w2 + g3 * w3 + g4 * w4) / (w0 + w1 + w2 + w3 + w4);
+  } else {
+    r = e * 0.125 + (a + c + g + i) * 0.03125 + (b + d + f + h) * 0.0625 + (j + k + l + m) * 0.125;
+  }
+  o = vec4(max(r, 0.0), 1.0);
+}`;
+
+const UP_FS = `#version 300 es
+precision highp float;
+in vec2 vUv; out vec4 o;
+uniform sampler2D uSrc; uniform vec2 uTexel;
+void main(){
+  vec2 t = uTexel;
+  vec3 s = texture(uSrc, vUv).rgb * 4.0;
+  s += (texture(uSrc, vUv + vec2(-t.x, 0.0)).rgb + texture(uSrc, vUv + vec2(t.x, 0.0)).rgb + texture(uSrc, vUv + vec2(0.0, -t.y)).rgb + texture(uSrc, vUv + vec2(0.0, t.y)).rgb) * 2.0;
+  s += texture(uSrc, vUv - t).rgb + texture(uSrc, vUv + t).rgb + texture(uSrc, vUv + vec2(-t.x, t.y)).rgb + texture(uSrc, vUv + vec2(t.x, -t.y)).rgb;
+  o = vec4(s / 16.0, 1.0);
+}`;
+
+const COMP_FS = `#version 300 es
+precision highp float;
+in vec2 vUv; out vec4 o;
+uniform sampler2D uScene, uBloom;
+uniform float uExposure, uBloomAmt, uHdr, uTime;
+const mat3 ACESIn = mat3(0.59719, 0.07600, 0.02840, 0.35458, 0.90834, 0.13383, 0.04823, 0.01566, 0.83777);
+const mat3 ACESOut = mat3(1.60475, -0.10208, -0.00327, -0.53108, 1.10813, -0.07276, -0.07367, -0.00605, 1.07602);
+vec3 rrt(vec3 v){ vec3 a = v * (v + 0.0245786) - 0.000090537; vec3 b = v * (0.983729 * v + 0.4329510) + 0.238081; return a / b; }
+vec3 srgb(vec3 c){ return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c)); }
+float h12(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+void main(){
+  vec3 c = texture(uScene, vUv).rgb;
+  if (uHdr < 0.5) c = c * c * 16.0;
+  else c = mix(c, texture(uBloom, vUv).rgb / 6.0, uBloomAmt);
+  c *= uExposure;
+  vec2 q = vUv - 0.5;
+  c *= 1.0 - 0.45 * dot(q, q);
+  vec3 ca = ACESOut * rrt(ACESIn * c);
+  float L = max(dot(c, vec3(0.2126, 0.7152, 0.0722)), 1e-6);
+  vec3 lt = ACESOut * rrt(ACESIn * vec3(L));
+  vec3 cl = c * (lt.g / L);
+  c = mix(ca, cl / max(1.0, max(cl.r, max(cl.g, cl.b))), 0.62);
+  c = srgb(clamp(c, 0.0, 1.0));
+  c += (h12(gl_FragCoord.xy + fract(uTime * 0.37) * 911.0) - 0.5) / 255.0;
+  o = vec4(c, 1.0);
+}`;
+
+/* ---------------------------------------------------------------- WebGL setup */
+const canvas = $('#gl');
+const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, depth: false, stencil: false, powerPreference: 'high-performance' });
+if (!gl) { showFallback('This page needs WebGL 2, which this browser or device doesn’t provide. A recent Chrome, Edge, Firefox or Safari will run it.'); return; }
+
+function compile(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+let vsObj;
+function program(fs) {
+  vsObj = vsObj || compile(gl.VERTEX_SHADER, VS);
+  const p = gl.createProgram();
+  gl.attachShader(p, vsObj); gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fs));
+  gl.bindAttribLocation(p, 0, 'aPos'); gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  const u = {}, n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+  for (let i = 0; i < n; i++) { const info = gl.getActiveUniform(p, i); u[info.name] = gl.getUniformLocation(p, info.name); }
+  return { p, u };
+}
+let progSky, progScene, progDown, progUp, progComp, progAcc, progNoise;
+try {
+  progSky = program(SKY_FS); progScene = program(SCENE_FS);
+  progDown = program(DOWN_FS); progUp = program(UP_FS); progComp = program(COMP_FS); progAcc = program(ACC_FS); progNoise = program(NOISE_FS);
+} catch (err) {
+  console.error(err);
+  showFallback('The graphics driver couldn’t compile the ray tracer. Updating the browser or graphics driver usually fixes this.');
+  return;
+}
+
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const vbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+const draw = () => gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+function setU(prog, name, ...v) {
+  const loc = prog.u[name]; if (loc == null) return;
+  if (v.length === 1) gl.uniform1f(loc, v[0]);
+  else if (v.length === 2) gl.uniform2f(loc, v[0], v[1]);
+  else gl.uniform3f(loc, v[0], v[1], v[2]);
+}
+function setI(prog, name, v) { const loc = prog.u[name]; if (loc != null) gl.uniform1i(loc, v); }
+
+function texParams(target, minF, magF) {
+  gl.texParameteri(target, gl.TEXTURE_MIN_FILTER, minF);
+  gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, magF);
+  gl.texParameteri(target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+}
+function makeTarget(w, h, hdr) {
+  const t = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, t);
+  if (hdr) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, w, h, 0, gl.RGBA, gl.HALF_FLOAT, null);
+  else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+  texParams(gl.TEXTURE_2D, gl.LINEAR, gl.LINEAR);
+  const f = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+  const ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  return { t, f, w, h, ok };
+}
+function freeTarget(x) { if (x) { gl.deleteTexture(x.t); gl.deleteFramebuffer(x.f); } }
+
+const hasCBF = !!(gl.getExtension('EXT_color_buffer_float') || gl.getExtension('EXT_color_buffer_half_float'));
+let HDR = false;
+if (hasCBF) { const test = makeTarget(4, 4, true); HDR = test.ok; freeTarget(test); }
+const aniso = gl.getExtension('EXT_texture_filter_anisotropic');
+
+const bbTex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, bbTex);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, 512, 1, 0, gl.RGBA, gl.FLOAT, buildBBTable());
+texParams(gl.TEXTURE_2D, gl.LINEAR, gl.LINEAR);
+
+const isSmall = Math.min(screen.width, screen.height) < 700;
+const skySize = Math.min(gl.getParameter(gl.MAX_CUBE_MAP_TEXTURE_SIZE), isSmall ? 512 : 1024);
+const skyTex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_CUBE_MAP, skyTex);
+for (let f = 0; f < 6; f++) gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X + f, 0, gl.RGBA8, skySize, skySize, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+{
+  const fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.viewport(0, 0, skySize, skySize);
+  gl.useProgram(progSky.p);
+  for (let f = 0; f < 6; f++) {
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_CUBE_MAP_POSITIVE_X + f, skyTex, 0);
+    setI(progSky, 'uFace', f);
+    draw();
+  }
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.deleteFramebuffer(fb);
+  gl.bindTexture(gl.TEXTURE_CUBE_MAP, skyTex);
+  gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+  texParams(gl.TEXTURE_CUBE_MAP, gl.LINEAR_MIPMAP_LINEAR, gl.LINEAR);
+  if (aniso) gl.texParameterf(gl.TEXTURE_CUBE_MAP, aniso.TEXTURE_MAX_ANISOTROPY_EXT, Math.min(8, gl.getParameter(aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
+}
+
+/* the disk's turbulence, rendered once into a polar texture: angle across, radius 0-32 rs down */
+const diskTex = gl.createTexture();
+{
+  const W = 2048, H = 1024;
+  gl.bindTexture(gl.TEXTURE_2D, diskTex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, W, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+  const fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, diskTex, 0);
+  gl.viewport(0, 0, W, H);
+  gl.useProgram(progNoise.p);
+  draw();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.deleteFramebuffer(fb);
+  gl.bindTexture(gl.TEXTURE_2D, diskTex);
+  gl.generateMipmap(gl.TEXTURE_2D);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+}
+
+let scene = null, mips = [], accA = null, accB = null, accFlip = false;
+function ensureTargets(w, h) {
+  if (scene && scene.w === w && scene.h === h) return false;
+  freeTarget(scene); mips.forEach(freeTarget); mips = []; freeTarget(accA); freeTarget(accB);
+  scene = makeTarget(w, h, HDR);
+  if (HDR) {
+    accA = makeTarget(w, h, true); accB = makeTarget(w, h, true);
+    let mw = w, mh = h;
+    for (let i = 0; i < 6; i++) { mw = Math.max(1, mw >> 1); mh = Math.max(1, mh >> 1); mips.push(makeTarget(mw, mh, true)); }
+  }
+  return true;
+}
+
+/* ---------------------------------------------------------------- state */
+const P = { R: 60, elev: 0.36, azim: -0.72, fov: 48, look: 0, lens: 1, dopp: 1, grav: 1, orders: 0, guides: 0, stars: 1, spin: 0, thick: 1, Tpeak: 4300, exposure: 1.3, bloom: 0.6, speed: 1, auto: 0 };
+const T = { ...P };
+const DEFAULT_LOOK = { Tpeak: 4300, exposure: 1.3, bloom: 0.6, speed: 1, stars: 1 };
+const RATE = { R: 5, elev: 12, azim: 12, fov: 4, look: 3.5, lens: 4, dopp: 4, grav: 4, orders: 4, guides: 5, stars: 4, spin: 2.5, thick: 30, Tpeak: 8, exposure: 8, bloom: 8, speed: 8 };
+
+/* spin geometry, in units where the non-spinning horizon radius rs = 1 (mass M = 1/2) */
+const M = 0.5;
+function iscoM(x) {
+  const z1 = 1 + Math.cbrt(1 - x * x) * (Math.cbrt(1 + x) + Math.cbrt(1 - x));
+  const z2 = Math.sqrt(3 * x * x + z1 * z1);
+  return 3 + z2 - Math.sqrt((3 - z1) * (3 + z1 + 2 * z2));
+}
+const spinA = () => P.spin * M;
+const rinNow = () => iscoM(P.spin) * M;
+const rhNow = () => M * (1 + Math.sqrt(Math.max(1 - P.spin * P.spin, 0)));
+const useKerr = () => P.spin > 0.002 && P.lens > 0.999;
+const photonOrbits = () => [1, -1].map((s) => 2 * M * (1 + Math.cos(2 / 3 * Math.acos(-s * P.spin))));
+
+/* hot clumps: born at random radii, they live a few orbits and fade */
+const BLOBS = 12, blobA = new Float32Array(BLOBS * 4), blobAge = new Float32Array(BLOBS);
+const hash1 = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+function updateBlobs(t) {
+  const rin = rinNow();
+  for (let i = 0; i < BLOBS; i++) {
+    const life = 90 + 80 * hash1(i * 7.31);
+    const tt = t + hash1(i * 3.7 + 1.1) * life;
+    const gen = Math.floor(tt / life), age = tt - gen * life;
+    const h1 = hash1(i * 13.1 + gen * 7.7), h2 = hash1(i * 5.3 + gen * 3.1 + 9.2), h3 = hash1(i * 2.9 + gen * 1.3 + 4.4);
+    blobA[i * 4] = lerp(rin + 0.5, 9.5, h1 * h1);
+    blobA[i * 4 + 1] = h2 * Math.PI * 2;
+    blobA[i * 4 + 2] = 0.22 + 0.15 * h3;
+    blobA[i * 4 + 3] = Math.sin(Math.PI * age / life);
+    blobAge[i] = age;
+  }
+}
+const tweens = {};
+let now = performance.now();
+function tween(k, to, ms, delay = 0) { tweens[k] = { from: P[k], to, t0: now + delay, ms }; T[k] = to; }
+function cancelTween(k) { if (tweens[k]) { T[k] = P[k]; delete tweens[k]; } }
+
+let simTime = 0;
+let shift = [0, 0];
+let hover = null, pin = null, chapter = 0;
+let lastInteract = -1e9, dragging = false;
+const vel = { a: 0, e: 0 };
+
+function camera() {
+  const ce = Math.cos(P.elev), se = Math.sin(P.elev), ca = Math.cos(P.azim), sa = Math.sin(P.azim);
+  const pos = [P.R * ce * sa, P.R * se, P.R * ce * ca];
+  const fwd0 = V.mul(pos, -1 / P.R);
+  const right0 = V.norm(V.cross(fwd0, [0, 1, 0]));
+  const up = V.cross(right0, fwd0);
+  const cl = Math.cos(P.look), sl = Math.sin(P.look);
+  const fwd = V.add(V.mul(fwd0, cl), V.mul(right0, sl));
+  const right = V.sub(V.mul(right0, cl), V.mul(fwd0, sl));
+  return { pos, fwd, right, up, fwd0, right0 };
+}
+function viewInfo() {
+  const cw = canvas.clientWidth || innerWidth, ch = canvas.clientHeight || innerHeight;
+  const aspect = cw / ch;
+  const t = Math.tan(P.fov * Math.PI / 360);
+  return { cw, ch, aspect, tanHalf: aspect >= 1 ? t : t / Math.max(aspect, 0.55) };
+}
+function dirAt(x, y, cam, vw) {
+  const nx = (x / vw.cw) * 2 - 1 - shift[0], ny = 1 - (y / vw.ch) * 2 - shift[1];
+  return V.norm(V.add(cam.fwd, V.add(V.mul(cam.right, nx * vw.aspect * vw.tanHalf), V.mul(cam.up, ny * vw.tanHalf))));
+}
+function holeScreen(vw) { return [(shift[0] + 1) / 2 * vw.cw, (1 - shift[1]) / 2 * vw.ch]; }
+
+/* ---------------------------------------------------------------- CPU ray tracer (mirrors the shader) */
+function trace(d, cam) {
+  const pos = cam.pos, r0 = V.len(pos), e1 = V.mul(pos, 1 / r0);
+  const cpsi = V.dot(d, e1);
+  const tv = V.sub(d, V.mul(e1, cpsi));
+  let spsi = V.len(tv);
+  const e2 = spsi > 1e-7 ? V.mul(tv, 1 / spsi) : V.norm(V.cross(e1, Math.abs(e1[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0]));
+  spsi = Math.max(spsi, 1e-7);
+  const nrm = V.cross(e1, e2);
+  const k = P.lens;
+  let u = 1 / r0;
+  const lapse0 = Math.sqrt(Math.max(1 - k * u, 1e-5));
+  let up = -u * lapse0 * cpsi / spsi;
+  const b = spsi / (u * lapse0);
+  const A = e1[1], B = e2[1];
+  let phiC = 1e9;
+  if (Math.abs(A) + Math.abs(B) > 1e-6) {
+    phiC = ((Math.atan2(B, A) + Math.PI / 2) % Math.PI + Math.PI) % Math.PI;
+    if (phiC < 1e-4) phiC += Math.PI;
+  }
+  const gCam = 1 / Math.sqrt(Math.max(1 - u, 1e-5));
+  const pt = (ph, uu) => { const r = 1 / uu, c = Math.cos(ph), s = Math.sin(ph); return [(c * e1[0] + s * e2[0]) * r, (c * e1[1] + s * e2[1]) * r, (c * e1[2] + s * e2[2]) * r]; };
+  const F = (x) => 1.5 * k * x * x - x;
+  const pts = [pos.slice()], crossings = [];
+  let phi = 0, n = 0, outcome = 'trapped', hit = null;
+  for (let i = 0; i < 700; i++) {
+    let h = Math.max(Math.min(0.18, 0.22 * u / Math.max(Math.abs(up), 1e-6)), 2e-4);
+    let isCross = false;
+    if (phi + h >= phiC) { h = phiC - phi; isCross = true; }
+    const k1u = up, k1p = F(u);
+    const k2u = up + 0.5 * h * k1p, k2p = F(u + 0.5 * h * k1u);
+    const k3u = up + 0.5 * h * k2p, k3p = F(u + 0.5 * h * k2u);
+    const k4u = up + h * k3p, k4p = F(u + h * k3u);
+    u += h / 6 * (k1u + 2 * k2u + 2 * k3u + k4u);
+    up += h / 6 * (k1p + 2 * k2p + 2 * k3p + k4p);
+    phi += h;
+    if (u >= 1) { pts.push(pt(phi, 1)); outcome = 'captured'; break; }
+    if (u > 0) pts.push(pt(phi, u));
+    if (isCross) {
+      const r = 1 / u;
+      const c = { r, n, phi, p: pt(phi, u), onDisk: r > rinNow() && r < DISK_OUT };
+      crossings.push(c);
+      if (c.onDisk) { Object.assign(c, diskShift(r, -b * nrm[1], gCam)); hit = c; outcome = 'disk'; break; }
+      n++; phiC += Math.PI;
+    }
+    if (up < 0 && u < 0.04) { outcome = 'escaped'; break; }
+  }
+  const pinf = phi + Math.atan2(u, -up) + k * (1 - Math.sqrt(Math.max(1 - b * b * u * u, 0))) / b;
+  const esc = [Math.cos(pinf) * e1[0] + Math.sin(pinf) * e2[0], Math.cos(pinf) * e1[1] + Math.sin(pinf) * e2[1], Math.cos(pinf) * e1[2] + Math.sin(pinf) * e2[2]];
+  if (outcome === 'escaped') pts.push(V.add(pts[pts.length - 1], V.mul(esc, 400)));
+  return { d, nrm, pts, crossings, hit, outcome, phi, b, esc };
+}
+
+/* Frequency shift of light from disk gas at radius r (mirrors diskLight in the shader). */
+function diskShift(r, Lz, camF) {
+  const a = spinA(), Om = Math.sqrt(M) / (Math.pow(r, 1.5) + a * Math.sqrt(M));
+  const A = 1 - 2 * M / r + 4 * M * a * Om / r - (r * r + a * a + 2 * M * a * a / r) * Om * Om;
+  const ut = 1 / Math.sqrt(Math.max(A, 1e-4));
+  const lapse = Math.sqrt(Math.max(1 - 2 * M / r, 1e-3));
+  const gG0 = camF * lapse, gT = camF / (ut * Math.max(1 - Om * Lz, 1e-3));
+  const gG = Math.pow(gG0, P.grav), gD = Math.pow(gT / gG0, P.dopp);
+  const v = Math.sqrt(Math.max(0, 1 - 1 / Math.pow(ut * lapse, 2)));
+  return { gG, gD, g: gG * gD, v, T: P.Tpeak * diskTemp(r, rinNow()) * gG * gD };
+}
+
+/* Kerr ray tracer for the inspector (mirrors the shader's spinning branch). */
+function kerrTrace(d, cam) {
+  const a = spinA(), rh = rhNow(), rin = rinNow();
+  const pos = cam.pos, r0 = V.len(pos), e1 = V.mul(pos, 1 / r0);
+  const th0 = Math.acos(clamp(e1[1], -1, 1));
+  const ephi = V.norm(V.cross([0, 1, 0], e1)), eth = V.cross(ephi, e1);
+  const nr = V.dot(d, e1), nth = V.dot(d, eth), nph = V.dot(d, ephi);
+  const st = Math.sin(th0), ct = Math.cos(th0);
+  const Sig = r0 * r0 + a * a * ct * ct, Del = r0 * r0 - 2 * M * r0 + a * a;
+  const Ab = (r0 * r0 + a * a) ** 2 - a * a * Del * st * st;
+  const alp = Math.sqrt(Sig * Del / Ab), om = 2 * M * a * r0 / Ab, varpi = Math.sqrt(Ab / Sig) * st;
+  const La = -varpi * nph, Ea = alp + om * La, L = La / Ea;
+  const pthA = Math.sqrt(Sig) * (-nth) / Ea;
+  const Q = pthA * pthA + ct * ct * (L * L / (st * st) - a * a);
+  const K = (L - a) ** 2 + Q, camF = 1 / Ea;
+  const Fp = (r, t) => { const s = Math.max(Math.abs(Math.sin(t)), 2e-3), del = r * r - 2 * M * r + a * a; return -(a / del * ((r * r + a * a) - a * L) - a + L / (s * s)); };
+  const Rp = (r) => 2 * r * ((r * r + a * a) - a * L) - (r - M) * K;
+  const Tp = (t) => { const s = Math.sin(t), c = Math.cos(t), ss = Math.max(s, 2e-3); return -a * a * c * s + L * L * c / (ss * ss * ss); };
+  const cart = (r, t, p) => { const rho = Math.sqrt(r * r + a * a) * Math.sin(t); return [rho * Math.cos(p), r * Math.cos(t), -rho * Math.sin(p)]; };
+  let r = r0, th = th0, ph = Math.atan2(-e1[2], e1[0]), pr = Math.sqrt(Sig * Del) * nr / Ea, pt = Math.sqrt(Sig) * nth / Ea;
+  let Pp = cart(r, th, ph), cPrev = Math.cos(th);
+  const pts = [pos.slice()], crossings = [];
+  let n = 0, outcome = 'trapped', hit = null, esc = e1, swept = 0;
+  for (let i = 0; i < 400; i++) {
+    const f1 = Fp(r, th), q1 = Rp(r), w1 = Tp(th);
+    const s0 = Math.max(Math.sin(th), 2e-3);
+    const dl = Math.min(0.16 / (Math.abs(pr) / r + Math.abs(pt) + Math.abs(f1) * Math.max(Math.sin(th), 0.05) + 1e-5),
+      Math.max(0.15 * s0, 0.004) / (Math.sqrt(pt * pt + L * L / (s0 * s0)) + 1e-5));
+    const rB = r + 0.5 * dl * pr, tB = th + 0.5 * dl * pt, prB = pr + 0.5 * dl * q1, ptB = pt + 0.5 * dl * w1;
+    const f2 = Fp(rB, tB), q2 = Rp(rB), w2 = Tp(tB);
+    const rC = r + 0.5 * dl * prB, tC = th + 0.5 * dl * ptB, prC = pr + 0.5 * dl * q2, ptC = pt + 0.5 * dl * w2;
+    const f3 = Fp(rC, tC), q3 = Rp(rC), w3 = Tp(tC);
+    const rD = r + dl * prC, tD = th + dl * ptC, prD = pr + dl * q3, ptD = pt + dl * w3;
+    const f4 = Fp(rD, tD), q4 = Rp(rD), w4 = Tp(tD);
+    r += dl / 6 * (pr + 2 * prB + 2 * prC + prD);
+    th += dl / 6 * (pt + 2 * ptB + 2 * ptC + ptD);
+    ph += dl / 6 * (f1 + 2 * f2 + 2 * f3 + f4);
+    pr += dl / 6 * (q1 + 2 * q2 + 2 * q3 + q4);
+    pt += dl / 6 * (w1 + 2 * w2 + 2 * w3 + w4);
+    if (th < 0) { th = -th; pt = -pt; ph += Math.PI; } else if (th > Math.PI) { th = 2 * Math.PI - th; pt = -pt; ph += Math.PI; }
+    const W = r * r + a * a - a * L, Rr = W * W - (r * r - 2 * M * r + a * a) * K;
+    if (Rr > 0.02 * W * W) pr = Math.sign(pr) * Math.sqrt(Rr);
+    const ctn = Math.cos(th), stn = Math.max(Math.sin(th), 1e-3), Th = Q + a * a * ctn * ctn - L * L * ctn * ctn / (stn * stn);
+    if (Th > 0.02 * (Q + a * a) + 1e-4) pt = Math.sign(pt) * Math.sqrt(Th);
+    const y = [r, th, ph, pr, pt];
+    if (y[0] < rh + 0.02) { pts.push(cart(rh, y[1], y[2])); outcome = 'captured'; break; }
+    const Pn = cart(y[0], y[1], y[2]);
+    swept += Math.acos(clamp(V.dot(V.norm(Pp), V.norm(Pn)), -1, 1));
+    pts.push(Pn);
+    const cn = Math.cos(y[1]);
+    if (cn * cPrev < 0) {
+      const t = cPrev / (cPrev - cn);
+      const p = V.add(Pp, V.mul(V.sub(Pn, Pp), t));
+      const r = Math.hypot(p[0], p[2]);
+      const c = { r, n, p, onDisk: r > rin && r < DISK_OUT };
+      crossings.push(c);
+      if (c.onDisk) { Object.assign(c, diskShift(r, L, camF)); hit = c; outcome = 'disk'; break; }
+      n++;
+    }
+    if (y[0] > 60 && y[3] > 0) { esc = V.norm(V.sub(Pn, Pp)); outcome = 'escaped'; pts.push(V.add(Pn, V.mul(esc, 400))); break; }
+    Pp = Pn; cPrev = cn;
+  }
+  return { d, nrm: V.norm(V.cross(pos, d)), pts, crossings, hit, outcome, phi: swept, b: 0, esc };
+}
+const traceAny = (d, cam) => (useKerr() ? kerrTrace(d, cam) : trace(d, cam));
+
+/* ---------------------------------------------------------------- tour */
+const CH = [
+  {
+    title: 'A black hole, computed live',
+    html: `<p>Every pixel here is a ray of light traced backward through the curved spacetime around a non-spinning black hole, using the exact equations of general relativity. Nothing is painted on.</p>
+           <p>The glow is a disk of hot gas in orbit, with brighter clumps that shear into spirals as they circle. Everything else you see follows from how gravity bends its light.</p>
+           <p><b>Drag</b> to orbit. <b>Scroll or pinch</b> to change distance. <b>Point at the image</b> to trace the path its light took, in the panel below.</p>`,
+    set: { R: 22, elev: 0.13, fov: 48 },
+  },
+  {
+    title: 'Gravity bends light',
+    html: `<p>Turn light bending down to zero and light travels in straight lines. You would see a flat ring around a small dark ball.</p>
+           <p>Turn it back up and the far side of the disk, hidden behind the hole, rises into view over the top and wraps under the bottom. The slice below shows why: rays passing just above the hole curve down onto the disk behind it.</p>
+           <div class="ctl"><label for="c-lens">Light bending</label><output data-out="lens"></output><input type="range" id="c-lens" data-bind="lens" min="0" max="1" step="0.01"></div>
+           <button class="ghost" id="replayBend">Replay the bend</button>`,
+    set: { R: 24, elev: 0.1, fov: 46 },
+    enter() { playBend(); },
+  },
+  {
+    title: 'The shadow is bigger than the hole',
+    html: `<p>The dark disk is not the event horizon. It is the <b>shadow</b>: every direction in which a ray traced back from your eye ends on the horizon.</p>
+           <p>Gravity magnifies it to 2.6 times the horizon’s real width, shown by the dashed ring. Astronomers used the size of the bright ring around this shadow to weigh the black hole in the galaxy M87.</p>
+           <div class="sw"><span id="cb-guides">Size guides</span><button class="switch" role="switch" id="c-guides" data-toggle="guides" aria-labelledby="cb-guides"></button></div>`,
+    set: { R: 21, elev: 0.3, fov: 46, guides: 1 },
+  },
+  {
+    title: 'Light that went around',
+    html: `<p>Some light circles the hole before it reaches you. Here each ray is colored by how many times it crossed the disk’s plane: <b class="key-amber">once</b> is the direct view, <b class="key-blue">twice</b> is the underside of the disk seen around the hole, and <b class="key-pink">three or more</b> times is the photon ring.</p>
+           <p>Each extra half-loop squeezes the next image about 23 times thinner. In principle there are infinitely many, nested at the edge of the shadow.</p>
+           <div class="sw"><span id="cb-orders">Color by image order</span><button class="switch" role="switch" id="c-orders" data-toggle="orders" aria-labelledby="cb-orders"></button></div>`,
+    set: { R: 15, elev: 0.08, fov: 44, orders: 1 },
+  },
+  {
+    title: 'One side shines brighter',
+    html: `<p>Near its inner edge the gas orbits at half the speed of light. Gas coming toward you is beamed: brighter and bluer. Gas moving away is dimmed and reddened.</p>
+           <p>The film <i>Interstellar</i> left this out to keep its black hole symmetric. The first real image of a black hole, M87* in 2019, is brighter on one side for this reason.</p>
+           <div class="sw"><span id="cb-dopp">Doppler effect</span><button class="switch" role="switch" id="c-dopp" data-toggle="dopp" aria-labelledby="cb-dopp"></button></div>`,
+    set: { R: 20, elev: 0.16, fov: 48 },
+  },
+  {
+    title: 'Light climbing out',
+    html: `<p>Light loses energy as it climbs out of a gravity well, so it arrives redder and dimmer than it left. From the disk’s inner edge at 3 r<sub>s</sub>, gravity alone stretches its wavelength by 22%.</p>
+           <p>Switch it off to see the disk without the climb. The same effect makes clocks near the hole run slow.</p>
+           <div class="sw"><span id="cb-grav">Gravitational redshift</span><button class="switch" role="switch" id="c-grav" data-toggle="grav" aria-labelledby="cb-grav"></button></div>`,
+    set: { R: 18, elev: 0.22, fov: 48 },
+  },
+  {
+    title: 'Follow one ray',
+    html: `<p>Point at any spot on the image, or tap it on a phone, and the panel below traces that pixel’s light. Around a non-spinning black hole every ray stays in one flat plane, so the panel can show its whole journey exactly.</p>
+           <p>The marked ray rises over the shadow, bends down, and lands on the far side of the disk, behind the hole.</p>`,
+    set: { R: 16, elev: 0.12, fov: 48 },
+    pin: { b: 3.8 },
+  },
+  {
+    title: 'Hover at the photon sphere',
+    html: `<p>At 1.5 r<sub>s</sub>, light can travel in a circle. Hover here and the shadow fills exactly half your sky, with every star squeezed into the other half.</p>
+           <p>Your clock runs at 58% of the rate far away, and incoming starlight is blueshifted. Drag to orbit, or use the distance slider in Controls to climb back out.</p>`,
+    set: { R: 1.5, elev: 0.12, fov: 100, look: 1.3 },
+  },
+  {
+    title: 'Now let it spin',
+    html: `<p>Real black holes spin, and a spinning one drags space around with it. Watch the spin rise to 95% of the maximum.</p>
+           <p>The shadow flattens on the side where the disk comes toward you, because light moving with the spin can skim closer before escaping. The disk’s inner edge moves in from 3 r<sub>s</sub> to under 1 r<sub>s</sub>, so the gas there orbits faster and shines hotter.</p>
+           <div class="ctl"><label for="c-spin">Spin</label><output data-out="spin"></output><input type="range" id="c-spin" data-bind="spin" min="0" max="0.998" step="0.001"></div>
+           <p>Rays here follow the full Kerr solution of Einstein’s equations, which takes the graphics card several times more work per pixel.</p>`,
+    set: { R: 19, elev: 0.1, fov: 44, spin: 0.95 },
+    enter() { cancelTween('spin'); tween('spin', 0.95, 4500, 900); },
+  },
+];
+
+const stepsEl = $('#steps');
+CH.forEach((c, i) => {
+  const li = document.createElement('li');
+  const b = document.createElement('button');
+  b.setAttribute('aria-label', `Chapter ${i + 1}: ${c.title}`);
+  b.addEventListener('click', () => goTo(i));
+  li.appendChild(b); stepsEl.appendChild(li);
+});
+
+function playBend() {
+  cancelTween('lens');
+  P.lens = 0; T.lens = 0;
+  tween('lens', 1, 3400, 700);
+}
+function goTo(i) {
+  chapter = clamp(i, 0, CH.length - 1);
+  const c = CH[chapter];
+  $('#chapEyebrow').textContent = `Chapter ${chapter + 1} of ${CH.length}`;
+  $('#chapTitle').textContent = c.title;
+  const body = $('#chapBody');
+  body.innerHTML = c.html;
+  bindWithin(body);
+  const replay = body.querySelector('#replayBend');
+  if (replay) replay.addEventListener('click', playBend);
+  [...stepsEl.querySelectorAll('button')].forEach((b, j) => {
+    b.classList.toggle('done', j < chapter);
+    if (j === chapter) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
+  });
+  $('#prev').disabled = chapter === 0;
+  $('#next').disabled = chapter === CH.length - 1;
+  const s = { lens: 1, dopp: 1, grav: 1, orders: 0, guides: 0, look: 0, spin: 0, ...c.set };
+  for (const k of ['lens', 'dopp', 'grav', 'orders', 'guides', 'spin']) { delete tweens[k]; T[k] = s[k]; }
+  const ms = reduceMotion ? 10 : 2600;
+  tween('R', s.R, ms); tween('elev', s.elev, ms); tween('fov', s.fov, ms); tween('look', s.look, ms);
+  pin = c.pin ? { ...c.pin } : null;
+  if (c.enter) c.enter();
+  syncControls(T);
+  $('#panel').scrollTop = 0;
+}
+$('#prev').addEventListener('click', () => goTo(chapter - 1));
+$('#next').addEventListener('click', () => goTo(chapter + 1));
+addEventListener('keydown', (e) => {
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'textarea') return;
+  if (e.key === 'ArrowRight') goTo(chapter + 1);
+  else if (e.key === 'ArrowLeft') goTo(chapter - 1);
+  else if (e.key === 'Escape') pin = null;
+  else if (e.key === 'h' || e.key === 'H') setImmersive(!document.body.classList.contains('immersive'));
+  else if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+});
+
+/* ---------------------------------------------------------------- full screen and clean view */
+let toastTimer = 0;
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 4200);
+}
+function setImmersive(on) {
+  document.body.classList.toggle('immersive', on);
+  const b = $('#hideUi');
+  b.textContent = on ? 'Show panel' : 'Hide panel';
+  b.setAttribute('aria-pressed', String(on));
+}
+function isFull() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+function toggleFullscreen() {
+  if (isFull()) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  setImmersive(true);
+  if (!req) { toast('This browser can’t go full screen from here. Press F11 (or Ctrl+Cmd+F on a Mac).'); return; }
+  try {
+    const p = req.call(el);
+    if (p && p.catch) p.catch(() => toast('Full screen was blocked here. Press F11 (or Ctrl+Cmd+F on a Mac), or open the page in its own tab.'));
+  } catch (err) { toast('Full screen was blocked here. Press F11 (or Ctrl+Cmd+F on a Mac).'); }
+}
+$('#hideUi').addEventListener('click', () => setImmersive(!document.body.classList.contains('immersive')));
+$('#fullBtn').addEventListener('click', toggleFullscreen);
+const onFs = () => { $('#fullBtn').textContent = isFull() ? 'Exit full screen' : 'Full screen'; if (!isFull()) setImmersive(false); };
+document.addEventListener('fullscreenchange', onFs);
+document.addEventListener('webkitfullscreenchange', onFs);
+
+/* ---------------------------------------------------------------- controls binding */
+const FMT = {
+  R: (v) => `${v < 10 ? v.toFixed(2) : v.toFixed(1)} r<sub>s</sub>`,
+  lens: (v) => `${Math.round(v * 100)}%`,
+  Tpeak: (v) => `${(Math.round(v / 100) * 100).toLocaleString('en-US')} K`,
+  exposure: (v) => `${v.toFixed(2)}×`,
+  bloom: (v) => `${Math.round(v * 100)}%`,
+  speed: (v) => `${v.toFixed(1)}×`,
+  fov: (v) => `${Math.round(v)}°`,
+  spin: (v) => `${Math.round(v * 100)}%`,
+};
+function syncControls(src, keys = null, except = null) {
+  document.querySelectorAll('[data-bind],[data-toggle],[data-out]').forEach((el) => {
+    const k = el.dataset.bind || el.dataset.toggle || el.dataset.out;
+    if ((keys && !keys.includes(k)) || el === except) return;
+    const v = src[k];
+    if (el.dataset.bind) el.value = el.dataset.scale === 'log' ? Math.log(v) : v;
+    else if (el.dataset.toggle) el.setAttribute('aria-checked', v > 0.5 ? 'true' : 'false');
+    else if (FMT[k]) el.innerHTML = FMT[k](v);
+  });
+}
+function bindWithin(root) {
+  root.querySelectorAll('input[data-bind]').forEach((el) => {
+    el.addEventListener('input', () => {
+      const k = el.dataset.bind, v = parseFloat(el.value);
+      cancelTween(k);
+      T[k] = el.dataset.scale === 'log' ? Math.exp(v) : v;
+      if (k === 'lens' || k === 'fov' || k === 'R') P[k] = T[k];
+      syncControls(T, [k], el);
+    });
+  });
+  root.querySelectorAll('button[data-toggle]').forEach((el) => {
+    el.addEventListener('click', () => {
+      const k = el.dataset.toggle;
+      T[k] = T[k] > 0.5 ? 0 : 1;
+      if (k === 'auto') { P.auto = T.auto; lastInteract = -1e9; }
+      syncControls(T, [k]);
+    });
+  });
+}
+bindWithin($('#lab'));
+$('#resetView').addEventListener('click', () => {
+  Object.assign(T, DEFAULT_LOOK);
+  const c = CH[chapter].set;
+  tween('R', c.R, 1600); tween('elev', c.elev, 1600); tween('fov', c.fov, 1600); tween('look', c.look || 0, 1600);
+  syncControls(T);
+});
+$('#restartTour').addEventListener('click', () => goTo(0));
+$('#sheetToggle').addEventListener('click', () => {
+  const p = $('#panel'), open = !p.classList.contains('expanded');
+  p.classList.toggle('expanded', open);
+  $('#sheetToggle').setAttribute('aria-expanded', String(open));
+  $('#sheetToggle').textContent = open ? 'Less' : 'More';
+});
+
+/* ---------------------------------------------------------------- pointer input */
+const pointers = new Map();
+let pinch0 = 0, pinchR = 0, moved = false;
+const local = (e) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+canvas.addEventListener('pointerdown', (e) => {
+  canvas.setPointerCapture(e.pointerId);
+  const p = local(e);
+  pointers.set(e.pointerId, { x: p.x, y: p.y, x0: p.x, y0: p.y });
+  moved = false;
+  if (pointers.size === 2) {
+    const [a, b] = [...pointers.values()];
+    pinch0 = Math.hypot(a.x - b.x, a.y - b.y); pinchR = P.R; cancelTween('R');
+  }
+});
+canvas.addEventListener('pointermove', (e) => {
+  const p = local(e);
+  const rec = pointers.get(e.pointerId);
+  if (!rec) { if (e.pointerType === 'mouse') hover = p; return; }
+  const dx = p.x - rec.x, dy = p.y - rec.y;
+  rec.x = p.x; rec.y = p.y;
+  if (Math.hypot(p.x - rec.x0, p.y - rec.y0) > 5) moved = true;
+  if (pointers.size === 1 && moved) {
+    if (!dragging) { dragging = true; canvas.classList.add('dragging'); cancelTween('elev'); cancelTween('azim'); }
+    T.azim -= dx * 0.0055;
+    T.elev = clamp(T.elev + dy * 0.0045, -1.45, 1.45);
+    vel.a = -dx * 0.0055 / 0.016; vel.e = dy * 0.0045 / 0.016;
+    hover = null;
+    lastInteract = now;
+  } else if (pointers.size === 2) {
+    const [a, b] = [...pointers.values()];
+    const dist = Math.hypot(a.x - b.x, a.y - b.y);
+    if (pinch0 > 0) { T.R = clamp(pinchR * pinch0 / dist, 1.15, 80); syncControls(T, ['R']); }
+    lastInteract = now;
+  }
+});
+function endPointer(e) {
+  const rec = pointers.get(e.pointerId);
+  if (!rec) return;
+  pointers.delete(e.pointerId);
+  if (!moved && pointers.size === 0) {
+    const p = local(e);
+    const ps = pinScreen(viewInfo());
+    if (ps && Math.hypot(ps[0] - p.x, ps[1] - p.y) < 14) pin = null;
+    else pin = { x: p.x, y: p.y };
+    lastInteract = now;
+  }
+  if (pointers.size === 0) { dragging = false; canvas.classList.remove('dragging'); }
+  if (pointers.size < 2) pinch0 = 0;
+}
+canvas.addEventListener('pointerup', endPointer);
+canvas.addEventListener('pointercancel', endPointer);
+canvas.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') hover = null; });
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  cancelTween('R');
+  T.R = clamp(T.R * Math.exp(e.deltaY * 0.0011), 1.15, 80);
+  lastInteract = now;
+  syncControls(T, ['R']);
+}, { passive: false });
+
+/* ---------------------------------------------------------------- inspector drawing */
+const ray2d = $('#ray2d'), ictx = ray2d.getContext('2d');
+const css = getComputedStyle(document.documentElement);
+const C = (n) => css.getPropertyValue(n).trim();
+const COL = { ember: C('--ember'), blue: C('--blue'), red: C('--red'), ink: C('--ink'), muted: C('--muted'), faint: C('--faint'), line: C('--line'), void: C('--void') };
+
+function pinScreen(vw) {
+  if (!pin) return null;
+  if (pin.b != null) {
+    const [cx, cy] = holeScreen(vw);
+    const s = clamp(pin.b * Math.sqrt(Math.max(1 - 1 / P.R, 1e-4)) / P.R, -0.999, 0.999);
+    const off = Math.tan(Math.asin(s)) / vw.tanHalf * vw.ch / 2;
+    return [cx, cy - off];
+  }
+  return [pin.x, pin.y];
+}
+function fanRays(cam) {
+  const out = [];
+  const r0 = P.R, lapse = Math.sqrt(Math.max(1 - P.lens / r0, 1e-5));
+  if (r0 < 4) {
+    for (let i = 0; i < 40; i++) {
+      const a = -Math.PI + (i + 0.5) * 2 * Math.PI / 40;
+      out.push(traceAny(V.norm(V.add(V.mul(cam.fwd0, Math.cos(a)), V.mul(cam.up, Math.sin(a)))), cam));
+    }
+    return out;
+  }
+  const bs = [];
+  for (let i = 0; i <= 26; i++) bs.push(-8.5 + 17 * i / 26);
+  bs.push(-2.66, 2.66, -2.75, 2.75);
+  for (const b of bs) {
+    const s = clamp(b * lapse / r0, -0.999, 0.999);
+    const a = Math.asin(s);
+    out.push(traceAny(V.norm(V.add(V.mul(cam.fwd0, Math.cos(a)), V.mul(cam.up, Math.sin(a)))), cam));
+  }
+  return out;
+}
+function rsLabel(c, text, x, y) {
+  c.fillText(text, x, y);
+  const w = c.measureText(text).width;
+  c.font = '9px "IBM Plex Mono", monospace';
+  c.fillText('s', x + w + 0.5, y + 3);
+  c.font = '11px "IBM Plex Mono", monospace';
+}
+function ordinal(n) { return ['first', 'second', 'third', 'fourth', 'fifth'][n - 1] || `${n}th`; }
+
+function drawInspector(cam, vw) {
+  const rin = rinNow(), rh = rhNow(), kerr = useKerr();
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const W = ray2d.clientWidth, H = ray2d.clientHeight;
+  if (!W || !H) return;
+  if (ray2d.width !== Math.round(W * dpr) || ray2d.height !== Math.round(H * dpr)) { ray2d.width = Math.round(W * dpr); ray2d.height = Math.round(H * dpr); }
+  const c = ictx;
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.clearRect(0, 0, W, H);
+
+  const sel = hover ? [hover.x, hover.y] : pinScreen(vw);
+  let rays, n, mode;
+  if (sel) { const tr = traceAny(dirAt(sel[0], sel[1], cam, vw), cam); rays = [tr]; n = tr.nrm; mode = 'single'; }
+  else { rays = fanRays(cam); n = cam.right0; mode = 'fan'; }
+
+  let m = V.cross(n, [0, 1, 0]), topView = false;
+  if (V.len(m) < 1e-3) { topView = true; m = V.norm([cam.pos[0], 0, cam.pos[2]]); if (V.len(m) < 1e-6) m = [1, 0, 0]; }
+  else m = V.norm(m);
+  if (V.dot(cam.pos, m) < 0) m = V.mul(m, -1);
+  let w = V.norm(V.cross(n, m));
+  if (!topView && w[1] < 0) w = V.mul(w, -1);
+
+  const vr = P.R < 12 ? clamp(P.R * 0.75 + 1.6, 2.7, 8.5) : 8.5;
+  const s = (H / 2 - 8) / vr;
+  const cx = W * 0.42, cy = H / 2;
+  const map = (p) => [cx + V.dot(p, m) * s, cy - V.dot(p, w) * s];
+
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  c.strokeStyle = COL.line; c.lineWidth = 1;
+  for (const rr of [5, 10, 15, 20]) { c.beginPath(); c.arc(cx, cy, rr * s, 0, Math.PI * 2); c.stroke(); }
+
+  if (topView) {
+    const g = c.createRadialGradient(cx, cy, rin * s, cx, cy, DISK_OUT * s);
+    g.addColorStop(0, 'rgba(255,200,140,.55)'); g.addColorStop(1, 'rgba(255,120,60,0)');
+    c.fillStyle = g; c.beginPath(); c.arc(cx, cy, DISK_OUT * s, 0, Math.PI * 2); c.arc(cx, cy, rin * s, 0, Math.PI * 2, true); c.fill();
+  } else {
+    for (const sgn of [-1, 1]) {
+      const g = c.createLinearGradient(cx + sgn * rin * s, 0, cx + sgn * DISK_OUT * s, 0);
+      g.addColorStop(0, 'rgba(255,214,160,.95)'); g.addColorStop(0.45, 'rgba(255,160,80,.7)'); g.addColorStop(1, 'rgba(255,110,50,0)');
+      c.strokeStyle = g; c.lineWidth = 3.5;
+      c.beginPath(); c.moveTo(cx + sgn * rin * s, cy); c.lineTo(cx + sgn * DISK_OUT * s, cy); c.stroke();
+    }
+  }
+
+  c.save();
+  c.setLineDash([3, 4]); c.strokeStyle = COL.muted; c.globalAlpha = 0.7; c.lineWidth = 1;
+  for (const rp of (kerr ? photonOrbits() : [1.5])) { c.beginPath(); c.arc(cx, cy, rp * s, 0, Math.PI * 2); c.stroke(); }
+  c.restore();
+
+  const rayColor = (t) => t.outcome === 'captured' ? COL.red : t.outcome === 'disk' ? COL.ember : t.outcome === 'escaped' ? COL.blue : COL.muted;
+  const single = mode === 'single';
+  for (const t of rays) {
+    c.save();
+    c.strokeStyle = rayColor(t);
+    c.globalAlpha = single ? 1 : (t.outcome === 'escaped' ? 0.5 : 0.75);
+    c.lineWidth = single ? 2 : 1.1;
+    if (single) { c.shadowColor = rayColor(t); c.shadowBlur = 10; }
+    c.beginPath();
+    t.pts.forEach((p, i) => { const q = map(p); if (i === 0) c.moveTo(q[0], q[1]); else c.lineTo(q[0], q[1]); });
+    c.stroke();
+    c.restore();
+    if (t.hit) {
+      const q = map(t.hit.p);
+      c.fillStyle = COL.ember; c.beginPath(); c.arc(q[0], q[1], single ? 4 : 2.2, 0, Math.PI * 2); c.fill();
+    }
+    if (single) {
+      c.font = '10px "IBM Plex Mono", monospace';
+      for (const x of t.crossings) {
+        if (x.onDisk) continue;
+        const q = map(x.p);
+        c.strokeStyle = COL.muted; c.lineWidth = 1;
+        c.beginPath(); c.arc(q[0], q[1], 3, 0, Math.PI * 2); c.stroke();
+      }
+    }
+  }
+
+  const hs = s * rh;
+  const hg = c.createRadialGradient(cx, cy, hs * 0.6, cx, cy, hs * 1.35);
+  hg.addColorStop(0, '#000'); hg.addColorStop(0.72, '#000'); hg.addColorStop(0.75, 'rgba(255,90,60,.45)'); hg.addColorStop(1, 'rgba(255,90,60,0)');
+  c.fillStyle = hg; c.beginPath(); c.arc(cx, cy, hs * 1.35, 0, Math.PI * 2); c.fill();
+
+  c.font = '11px "IBM Plex Mono", monospace';
+  const camQ = map(cam.pos);
+  const inside = camQ[0] > 10 && camQ[0] < W - 10 && camQ[1] > 10 && camQ[1] < H - 10;
+  c.fillStyle = COL.ink;
+  if (inside) {
+    c.beginPath(); c.arc(camQ[0], camQ[1], 3.5, 0, Math.PI * 2); c.fill();
+    c.fillText('you', camQ[0] + 7, camQ[1] - 7);
+  } else {
+    const dx = camQ[0] - cx, dy = camQ[1] - cy;
+    const tx = dx > 0 ? (W - 12 - cx) / dx : (12 - cx) / dx;
+    const ty = dy > 0 ? (H - 12 - cy) / dy : dy < 0 ? (12 - cy) / dy : Infinity;
+    const t = Math.min(Math.abs(tx), Math.abs(ty));
+    const ex = cx + dx * t, ey = cy + dy * t, ang = Math.atan2(dy, dx);
+    c.save(); c.translate(ex, ey); c.rotate(ang);
+    c.beginPath(); c.moveTo(6, 0); c.lineTo(-4, -4.5); c.lineTo(-4, 4.5); c.closePath(); c.fill();
+    c.restore();
+    c.textAlign = 'right';
+    const label = `you, ${P.R.toFixed(0)} r`;
+    const lx = Math.min(ex - 4, W - 14), ly = clamp(ey + (ey < H / 2 ? 18 : -10), 14, H - 6);
+    c.fillText(label, lx - 6, ly);
+    c.font = '9px "IBM Plex Mono", monospace'; c.textAlign = 'left'; c.fillText('s', lx - 5.5, ly + 3);
+    c.font = '11px "IBM Plex Mono", monospace';
+  }
+  c.textAlign = 'left';
+
+  $('#inspMode').textContent = (single ? (hover ? 'ray under pointer' : 'marked ray') : (P.R < 4 ? 'all directions' : 'vertical slice')) + (kerr ? ', flattened' : '');
+  const text = $('#inspText');
+  if (!single) {
+    text.innerHTML = kerr
+      ? 'With spin, rays twist out of any single plane, so this view flattens them onto one. The two dashed circles are where light can orbit with the spin (inner) and against it (outer).'
+      : 'A slice through your view. Each line is a ray traced back from your eye. Rays that skim the photon sphere (dashed) are bent the most. <b>Point at the image</b> to trace a single ray.';
+    return;
+  }
+  const t = rays[0];
+  if (t.outcome === 'disk') {
+    const h = t.hit, shiftWord = h.g >= 1 ? 'bluer' : 'redder';
+    text.innerHTML = `This light left the disk <b>${h.r.toFixed(1)} r<sub>s</sub></b> from the center${h.n > 0 ? `, on the ray’s ${ordinal(h.n + 1)} pass through the disk’s plane` : ''}, where gas orbits at ${(h.v).toFixed(2)}c. It arrives <b>${shiftWord}</b>, its frequency multiplied by <b>${h.g.toFixed(2)}</b> (motion ×${h.gD.toFixed(2)}, gravity ×${h.gG.toFixed(2)}).`;
+  } else if (t.outcome === 'captured') {
+    text.innerHTML = 'This ray ends on the event horizon, so nothing reaches you from this direction. Together, rays like this one make the shadow.';
+  } else if (t.outcome === 'escaped') {
+    const deg = Math.acos(clamp(V.dot(t.d, t.esc), -1, 1)) * 180 / Math.PI;
+    const turns = t.phi / (2 * Math.PI);
+    text.innerHTML = `Starlight from this direction is bent by <b>${deg < 10 ? deg.toFixed(1) : Math.round(deg)}°</b> on its way past the hole${turns > 0.75 ? `, after circling it ${turns.toFixed(1)} times` : ''}.`;
+  } else {
+    text.innerHTML = 'This ray is trapped near the photon sphere, circling the hole many times before it could escape or fall in.';
+  }
+}
+
+/* ---------------------------------------------------------------- frame loop */
+let longRun = 0, renderScale = isSmall ? 0.7 : 1, scaleCool = 0, ft = 16.7, fps = 60, hudTimer = 0, firstFrame = true;
+const panel = $('#panel');
+
+function targetShift(vw) {
+  const r = panel.getBoundingClientRect();
+  let cx = vw.cw / 2, cy = vw.ch / 2;
+  if (document.body.classList.contains('immersive')) return [0, 0];
+  if (innerWidth > 860) cx = Math.max(r.left / 2, vw.cw * 0.3);
+  else cy = clamp(r.top / 2 + 34, vw.ch * 0.22, vw.ch / 2);
+  return [(cx / vw.cw) * 2 - 1, 1 - (cy / vw.ch) * 2];
+}
+
+function update(dt) {
+  for (const k in tweens) {
+    const tw = tweens[k];
+    const x = clamp((now - tw.t0) / tw.ms, 0, 1), e = ease(x);
+    P[k] = k === 'R' ? Math.exp(lerp(Math.log(tw.from), Math.log(tw.to), e)) : lerp(tw.from, tw.to, e);
+    if (x >= 1) { P[k] = tw.to; delete tweens[k]; }
+    syncControls(P, [k]);
+  }
+  if (!dragging) {
+    if (Math.abs(vel.a) + Math.abs(vel.e) > 1e-4) {
+      T.azim += vel.a * dt; T.elev = clamp(T.elev + vel.e * dt, -1.45, 1.45);
+      const f = Math.exp(-dt * 4); vel.a *= f; vel.e *= f;
+    }
+    if (T.auto > 0.5 && now - lastInteract > 3500) T.azim += 0.028 * dt;
+  }
+  for (const k in RATE) {
+    if (k in tweens) continue;
+    const a = 1 - Math.exp(-RATE[k] * dt);
+    P[k] = k === 'R' ? Math.exp(lerp(Math.log(P[k]), Math.log(T[k]), a)) : lerp(P[k], T[k], a);
+    if (Math.abs(P[k] - T[k]) < 1e-5 * (1 + Math.abs(T[k]))) P[k] = T[k];
+  }
+  simTime += dt * P.speed * 6 * (reduceMotion ? 0.4 : 1);
+}
+
+function render(cam, vw) {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const cw = Math.max(1, Math.round(vw.cw * dpr)), ch = Math.max(1, Math.round(vw.ch * dpr));
+  if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }
+  const rw = Math.max(64, Math.round(cw * renderScale)), rh = Math.max(64, Math.round(ch * renderScale));
+  if (ensureTargets(rw, rh)) { accCount = 0; accAlpha = 1; jitter = [0, 0]; }
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, scene.f);
+  gl.viewport(0, 0, rw, rh);
+  gl.useProgram(progScene.p);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_CUBE_MAP, skyTex);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, bbTex);
+  gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, diskTex);
+  setI(progScene, 'uSky', 0); setI(progScene, 'uBB', 1); setI(progScene, 'uDiskTex', 2);
+  setU(progScene, 'uRes', rw, rh);
+  setU(progScene, 'uShift', shift[0], shift[1]);
+  setU(progScene, 'uCamPos', ...cam.pos);
+  setU(progScene, 'uCamRight', ...cam.right);
+  setU(progScene, 'uCamUp', ...cam.up);
+  setU(progScene, 'uCamFwd', ...cam.fwd);
+  setU(progScene, 'uTanHalf', vw.tanHalf);
+  setU(progScene, 'uAspect', vw.aspect);
+  setU(progScene, 'uTime', simTime);
+  setU(progScene, 'uLens', P.lens);
+  setU(progScene, 'uDopp', P.dopp);
+  setU(progScene, 'uGrav', P.grav);
+  setU(progScene, 'uOrders', P.orders);
+  setU(progScene, 'uGuides', P.guides);
+  setU(progScene, 'uStars', P.stars);
+  setU(progScene, 'uTpeak', P.Tpeak);
+  setU(progScene, 'uEmit', emitNorm(P.Tpeak));
+  setU(progScene, 'uDiskOut', DISK_OUT);
+  setU(progScene, 'uHdr', HDR ? 1 : 0);
+  setU(progScene, 'uSpin', spinA());
+  setU(progScene, 'uRin', rinNow());
+  setU(progScene, 'uRh', rhNow());
+  setU(progScene, 'uKerr', useKerr() ? 1 : 0);
+  setU(progScene, 'uThick', P.thick > 0.5 ? 1 : 0);
+  setU(progScene, 'uVolN', isSmall ? 4 : 5);
+  setU(progScene, 'uFrame', frameNo % 1000);
+  setU(progScene, 'uJitter', jitter[0], jitter[1]);
+  updateBlobs(simTime);
+  if (progScene.u['uBlob[0]']) gl.uniform4fv(progScene.u['uBlob[0]'], blobA);
+  if (progScene.u['uBlobAge[0]']) gl.uniform1fv(progScene.u['uBlobAge[0]'], blobAge);
+  draw();
+
+  // Average successive jittered frames while nothing moves: sharper edges, smoother gas.
+  let img = scene;
+  if (HDR) {
+    const dst = accFlip ? accA : accB, prev = accFlip ? accB : accA;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, dst.f); gl.viewport(0, 0, rw, rh);
+    gl.useProgram(progAcc.p);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, scene.t);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, prev.t);
+    setI(progAcc, 'uCur', 0); setI(progAcc, 'uPrev', 1);
+    setU(progAcc, 'uAlpha', accAlpha);
+    draw();
+    accFlip = !accFlip; img = dst;
+  }
+
+  if (HDR) {
+    gl.useProgram(progDown.p);
+    gl.activeTexture(gl.TEXTURE0);
+    setI(progDown, 'uSrc', 0);
+    let src = img;
+    mips.forEach((mt, i) => {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, mt.f); gl.viewport(0, 0, mt.w, mt.h);
+      gl.bindTexture(gl.TEXTURE_2D, src.t);
+      setU(progDown, 'uTexel', 1 / src.w, 1 / src.h);
+      setI(progDown, 'uFirst', i === 0 ? 1 : 0);
+      draw(); src = mt;
+    });
+    gl.useProgram(progUp.p);
+    setI(progUp, 'uSrc', 0);
+    gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);
+    for (let i = mips.length - 2; i >= 0; i--) {
+      const dst = mips[i], s = mips[i + 1];
+      gl.bindFramebuffer(gl.FRAMEBUFFER, dst.f); gl.viewport(0, 0, dst.w, dst.h);
+      gl.bindTexture(gl.TEXTURE_2D, s.t);
+      setU(progUp, 'uTexel', 1 / s.w, 1 / s.h);
+      draw();
+    }
+    gl.disable(gl.BLEND);
+  }
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(0, 0, cw, ch);
+  gl.useProgram(progComp.p);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, img.t);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, HDR ? mips[0].t : img.t);
+  setI(progComp, 'uScene', 0); setI(progComp, 'uBloom', 1);
+  setU(progComp, 'uExposure', P.exposure);
+  setU(progComp, 'uBloomAmt', P.bloom * 0.3);
+  setU(progComp, 'uHdr', HDR ? 1 : 0);
+  setU(progComp, 'uTime', now / 1000);
+  draw();
+  return [rw, rh];
+}
+let emitKey = '', emitV = 1;
+// Exposure: normalise to the disk's hottest point, half-way like a camera's auto-exposure,
+// so a spinning hole's hotter inner edge doesn't blow out the frame.
+function emitNorm(Tp) {
+  const key = `${Math.round(Tp)}|${P.spin.toFixed(3)}`;
+  if (key !== emitKey) {
+    emitKey = key;
+    const rin = rinNow();
+    let peak = 0;
+    for (let r = rin * 1.01; r < 8; r *= 1.02) peak = Math.max(peak, diskTemp(r, rin));
+    emitV = 1 / Math.sqrt(bbLum(Tp) * bbLum(Tp * peak));
+  }
+  return emitV;
+}
+
+function updateOverlay(vw) {
+  const [hx, hy] = holeScreen(vw);
+  const u = 1 / P.R;
+  const sinSh = Math.min(BCRIT * Math.sqrt(Math.max(1 - u, 0)) * u, 1);
+  const angSh = P.R >= 1.5 ? Math.asin(sinSh) : Math.PI - Math.asin(sinSh);
+  const angH = Math.asin(Math.min(u, 1));
+  const toPx = (a) => Math.tan(Math.min(a, 1.5)) / vw.tanHalf * vw.ch / 2;
+  const show = P.guides > 0.05 && Math.abs(P.look) < 0.05;
+  const ls = $('#lblShadow'), lh = $('#lblHorizon');
+  ls.style.opacity = lh.style.opacity = show ? String(Math.min(1, P.guides)) : '0';
+  if (show) {
+    const rs = toPx(angSh), rhz = toPx(angH);
+    ls.style.left = `${hx + rs * 0.72 + 10}px`; ls.style.top = `${hy - rs * 0.72 - 26}px`;
+    lh.style.left = `${hx + rhz * 0.7 + 10}px`; lh.style.top = `${hy + rhz * 0.7 + 6}px`;
+  }
+  const pe = $('#pin'), ps = pinScreen(vw);
+  pe.hidden = !ps;
+  if (ps) { pe.style.left = `${ps[0]}px`; pe.style.top = `${ps[1]}px`; }
+  return angSh;
+}
+
+function updateHud(angSh, rw, rh) {
+  let clock = Math.sqrt(Math.max(1 - 1 / P.R, 0));
+  if (P.spin > 0.002) {
+    const a = spinA(), r = P.R, ct = Math.sin(P.elev), st = Math.cos(P.elev);
+    const Sig = r * r + a * a * ct * ct, Del = r * r - 2 * M * r + a * a, Ab = (r * r + a * a) ** 2 - a * a * Del * st * st;
+    clock = Math.sqrt(Math.max(Sig * Del / Ab, 0));
+  }
+  $('#hud').innerHTML =
+    `<span>distance <b>${P.R < 10 ? P.R.toFixed(2) : P.R.toFixed(1)}</b> r<sub>s</sub></span>` +
+    `<span>your clock <b>${clock.toFixed(3)}×</b></span>` +
+    (P.spin > 0.002 ? `<span>spin <b>${Math.round(P.spin * 100)}%</b> of maximum</span>` : `<span>shadow <b>${(2 * angSh * 180 / Math.PI).toFixed(1)}°</b> wide</span>`) +
+    `<span><b>${(rw * rh / 1e6).toFixed(2)}M</b> rays · <b>${Math.round(fps)}</b> fps</span>`;
+}
+
+let last = performance.now();
+let stillFrames = 0, inspTimer = 0, lastSig = null, accCount = 0, accAlpha = 1, jitter = [0, 0], frameNo = 0;
+const halton = (i, b) => { let f = 1, r = 0; while (i > 0) { f /= b; r += f * (i % b); i = Math.floor(i / b); } return r; };
+function frame(t) {
+  now = t;
+  const dt = Math.min(0.1, Math.max(0.001, (t - last) / 1000));
+  last = t;
+  // A single long frame is a hiccup; a run of them is real load.
+  longRun = dt > 0.07 ? longRun + 1 : 0;
+  if (dt <= 0.07 || longRun >= 3) ft = lerp(ft, Math.min(dt * 1000, 250), dt > 0.07 ? 0.35 : 0.05);
+  fps = 1000 / ft;
+  if (!firstFrame && t > scaleCool) {
+    const still = stillFrames > 20 && !dragging;
+    const slow = still ? 70 : 30, fast = still ? 45 : 19;
+    if (ft > slow && renderScale > 0.3) { renderScale = Math.max(0.3, renderScale * (ft > 2 * slow ? 0.7 : 0.86)); scaleCool = t + 700; }
+    else if (ft < fast && renderScale < 1) { renderScale = Math.min(1, renderScale * 1.1); scaleCool = t + 900; }
+  }
+  update(dt);
+  const vw = viewInfo();
+  const ts = targetShift(vw), a = 1 - Math.exp(-6 * dt);
+  shift = firstFrame ? ts : [lerp(shift[0], ts[0], a), lerp(shift[1], ts[1], a)];
+  if (Math.abs(shift[0] - ts[0]) + Math.abs(shift[1] - ts[1]) < 1e-5) shift = ts;
+  const cam = camera();
+  const sig = [...cam.pos, ...cam.fwd, vw.tanHalf, vw.cw, vw.ch, shift[0], shift[1],
+    P.lens, P.dopp, P.grav, P.orders, P.guides, P.stars, P.Tpeak, P.spin, P.thick];
+  const moved = !lastSig || sig.some((v, i) => Math.abs(v - lastSig[i]) > 1e-6 * (1 + Math.abs(v)));
+  lastSig = sig;
+  stillFrames = (moved || dragging) ? 0 : stillFrames + 1;
+  accCount = (moved || dragging) ? 0 : accCount + 1;
+  accAlpha = 1 / Math.min(accCount + 1, P.speed > 0.01 ? 8 : 64);
+  jitter = accCount > 0 ? [halton(accCount % 32 + 1, 2) - 0.5, halton(accCount % 32 + 1, 3) - 0.5] : [0, 0];
+  frameNo++;
+  const [rw, rh] = render(cam, vw);
+  const angSh = updateOverlay(vw);
+  if (t > inspTimer) { drawInspector(cam, vw); inspTimer = t + (useKerr() ? 120 : 50); }
+  if (t > hudTimer) { updateHud(angSh, rw, rh); hudTimer = t + 250; }
+  if (firstFrame) { firstFrame = false; const l = $('#loading'); if (l) l.remove(); scaleCool = t + 1500; }
+  requestAnimationFrame(frame);
+}
+
+canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); showFallback('The graphics context was lost, often after a driver reset or sleep. Reload the page to start tracing again.'); });
+
+goTo(0);
+tween('R', 22, reduceMotion ? 10 : 6200);
+tween('elev', 0.13, reduceMotion ? 10 : 6200);
+syncControls(T);
+requestAnimationFrame(frame);
+})();
+</script>

@@ -1,0 +1,671 @@
+<title>Warp Strike</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+/* Layout: a full-bleed live render; a caption floats above one glass transport bar, like a film being scrubbed. */
+:root{
+  --void:#040508;
+  --ink:#EEF1F6;
+  --ink-2:#CDD3DC;
+  --muted:#98A0AC;
+  --faint:#5F6672;
+  --accent:#8FD3FF;
+  --accent-line:rgba(143,211,255,.5);
+  --glass:rgba(12,14,19,.72);
+  --line:rgba(220,232,255,.10);
+  --line-2:rgba(220,232,255,.20);
+  --scrim:rgba(4,5,8,.6);
+  --f-display:"Instrument Serif","Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --f-body:"IBM Plex Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--void);color:var(--ink);font:15px/1.55 var(--f-body);overflow:hidden;-webkit-font-smoothing:antialiased}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab;background:var(--void)}
+#gl.dragging{cursor:grabbing}
+.brand{position:fixed;left:28px;top:calc(22px + env(safe-area-inset-top,0px));pointer-events:none;max-width:min(440px,calc(100vw - 300px));transition:opacity .4s}
+.brand h1{font:400 44px/0.95 var(--f-display);margin:0}
+.brand h1 em{font-style:italic;color:var(--accent)}
+.brand p{margin:.6rem 0 0;color:var(--muted);font-size:13.5px;max-width:38ch}
+.hud{position:fixed;left:28px;top:calc(140px + env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:2px;font:12px/1.5 var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums;pointer-events:none;transition:opacity .4s}
+.hud b{color:var(--ink);font-weight:500}
+.tools{position:fixed;right:20px;top:calc(20px + env(safe-area-inset-top,0px));display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;z-index:4;max-width:calc(100vw - 40px)}
+.ghost{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;border:1px solid var(--line-2);background:var(--scrim);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:var(--ink);font:500 12.5px var(--f-body);cursor:pointer;transition:border-color .2s,color .2s}
+.ghost:hover{border-color:var(--accent);color:var(--accent)}
+.ghost[aria-pressed="true"]{border-color:var(--accent-line);color:var(--accent)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.about{position:fixed;right:20px;top:calc(68px + env(safe-area-inset-top,0px));width:min(390px,calc(100vw - 40px));max-height:calc(100vh - 220px);overflow-y:auto;box-sizing:border-box;padding:18px 20px;background:var(--glass);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);border:1px solid var(--line);border-radius:14px;z-index:4;font-size:13.5px;color:var(--ink-2)}
+.about h3{font:500 11px/1 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:14px 0 8px}
+.about h3:first-child{margin-top:0}
+.about ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+.about li::marker{color:var(--faint)}
+.about a{color:var(--accent)}
+.caption{position:fixed;left:50%;bottom:calc(104px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(660px,calc(100vw - 32px));margin:0;text-align:center;font:400 22px/1.3 var(--f-display);color:var(--ink);text-shadow:0 1px 18px rgba(0,0,0,.9);text-wrap:balance;pointer-events:none;transition:opacity .6s}
+.bar{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(760px,calc(100vw - 32px));box-sizing:border-box;display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--glass);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);border:1px solid var(--line);border-radius:999px;z-index:3}
+.icon{flex:none;width:38px;height:38px;border-radius:50%;border:1px solid var(--line-2);background:transparent;color:var(--ink);display:grid;place-items:center;cursor:pointer;padding:0}
+.icon:hover{border-color:var(--accent);color:var(--accent)}
+.icon svg{width:14px;height:14px;fill:currentColor}
+.track{position:relative;flex:1;min-width:0}
+.marks{position:absolute;left:0;right:0;top:-2px;height:6px;pointer-events:none}
+.marks i{position:absolute;top:0;width:1px;height:6px;background:var(--line-2)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:26px;background:transparent;margin:0;cursor:pointer;display:block}
+input[type=range]::-webkit-slider-runnable-track{height:2px;background:linear-gradient(90deg,var(--accent) var(--p,0%),var(--line-2) var(--p,0%));border-radius:2px}
+input[type=range]::-moz-range-track{height:2px;background:var(--line-2);border-radius:2px}
+input[type=range]::-moz-range-progress{height:2px;background:var(--accent)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:-6px;border-radius:50%;background:var(--accent);border:2px solid var(--void);box-shadow:0 0 0 1px var(--accent)}
+input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;background:var(--accent);border:2px solid var(--void)}
+#clock{flex:none;font:12px var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums;min-width:4.6ch;text-align:right}
+.toast{position:fixed;left:50%;top:calc(76px + env(safe-area-inset-top,0px));transform:translateX(-50%);padding:10px 16px;border-radius:999px;background:var(--scrim);border:1px solid var(--line-2);color:var(--ink);font:13px var(--f-body);z-index:6;max-width:calc(100vw - 32px);text-align:center}
+body.clean .brand,body.clean .caption,body.clean .hud{opacity:0}
+.fallback{position:fixed;inset:0;display:grid;place-items:center;padding:24px;background:var(--void);color:var(--ink);text-align:center;z-index:9}
+.fallback div{max-width:46ch}
+.fallback h2{font:400 34px/1.1 var(--f-display);margin:0 0 12px}
+.fallback p{color:var(--muted);margin:0}
+@media (max-width: 700px){
+  .brand{left:16px;top:calc(14px + env(safe-area-inset-top,0px));max-width:calc(100vw - 32px)}
+  .brand h1{font-size:30px}
+  .brand p{display:none}
+  .hud{left:16px;top:calc(100px + env(safe-area-inset-top,0px));font-size:11px}
+  .tools{right:16px;top:calc(56px + env(safe-area-inset-top,0px))}
+  .ghost{padding:6px 11px;font-size:12px}
+  .about{top:calc(100px + env(safe-area-inset-top,0px));right:16px}
+  .caption{font-size:18px;bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+  .bar{gap:8px;padding:8px 12px}
+}
+@media (prefers-reduced-motion: reduce){ .caption,.brand,.hud{transition:none} }
+</style>
+
+<canvas id="gl" aria-label="A warp bubble the size of a black hole flying faster than light at it. Drag to look around, scroll to change distance."></canvas>
+<header class="brand">
+  <h1>Warp <em>Strike</em></h1>
+  <p>A ship the size of a black hole, in a warp bubble, flying at it faster than light. Every pixel’s light is traced through the warped spacetime.</p>
+</header>
+<div class="hud" id="hud" aria-live="off"></div>
+<div class="tools">
+  <button class="ghost" id="aboutBtn" aria-expanded="false" aria-controls="about">What’s real</button>
+  <button class="ghost" id="cleanBtn" aria-pressed="false" title="Hide text (H)">Hide text</button>
+  <button class="ghost" id="fullBtn" title="Full screen (F)">Full screen</button>
+</div>
+<aside class="about" id="about" hidden aria-label="What is real and what is imagined">
+  <h3>Real physics</h3>
+  <ul>
+    <li>The warp bubble is the Alcubierre metric, the best-known warp solution of Einstein’s equations: space is squeezed ahead of the bubble and stretched behind it, while the ship inside sits in flat space.</li>
+    <li>The black hole is the Schwarzschild solution, written as space flowing inward (the Painlevé–Gullstrand form), the same black hole as in <a href="https://claude.ai/artifact/75y6nk4MdoaTQXfGVH7UWe" target="_blank" rel="noopener">Event Horizon</a>.</li>
+    <li>Every pixel’s light is traced backward in time through both, while the bubble moves. Nothing about the images is animated by hand: the ship appearing out of nowhere as two images, the backward-flying twin, the fishbowl lens and the color shifts all come from the traced light.</li>
+    <li>Colors and brightness come from each photon’s energy when it left versus when it arrives, so the bubble’s own shifts, the disk’s Doppler shift and gravity’s redshift all show up together.</li>
+  </ul>
+  <h3>Imagined</h3>
+  <ul>
+    <li>A warp bubble needs negative energy, which isn’t known to exist.</li>
+    <li>No one knows the spacetime of a warp bubble and a black hole together. This one adds their two flows of space, a common sketch that is not itself a solution of Einstein’s equations.</li>
+    <li>The burst when the bubble stops is a simplified stand-in for a published result: light and particles piled up on the bubble’s front wall are released ahead of it.</li>
+    <li>The ship and its lights are invented, and the bubble’s interior ignores the black hole’s pull.</li>
+  </ul>
+</aside>
+<p class="caption" id="caption" aria-live="polite"></p>
+<div class="bar" role="group" aria-label="Story playback">
+  <button class="icon" id="playBtn" aria-label="Pause"><svg viewBox="0 0 14 14" aria-hidden="true"><rect x="2" y="1" width="3.5" height="12" rx="1"/><rect x="8.5" y="1" width="3.5" height="12" rx="1"/></svg></button>
+  <div class="track">
+    <div class="marks" id="marks"></div>
+    <input type="range" id="timeline" min="0" max="40" step="0.01" value="0" aria-label="Story time">
+  </div>
+  <output id="clock" for="timeline">0:00</output>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+<div class="fallback" id="fallback" hidden><div><h2>The light can’t be traced here</h2><p id="fallbackMsg"></p></div></div>
+
+<script>
+(() => {
+'use strict';
+const $ = (s) => document.querySelector(s);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const V = {
+  add: (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]],
+  sub: (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]],
+  mul: (a, s) => [a[0] * s, a[1] * s, a[2] * s],
+  dot: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2],
+  cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
+  len: (a) => Math.hypot(a[0], a[1], a[2]),
+  norm: (a) => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; },
+};
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function showFallback(msg) { $('#fallbackMsg').textContent = msg; $('#fallback').hidden = false; }
+
+/*@blackbody@*/
+/* ---------------------------------------------------------------- shaders */
+/*@vs_noise_sky@*/
+// Spacetime here is flat space carrying a flow V(x, t): ds^2 = -dt^2 + |dx - V dt|^2.
+// The black hole's flow is -sqrt(rs/r) toward the center (Painleve-Gullstrand Schwarzschild);
+// the warp bubble's is v(t) f(r_s) along its path (Alcubierre). Light is traced backward with
+// Hamilton's equations for H = (|p|^2 - (p_t + V.p)^2) / 2.
+const SCENE_FS = `#version 300 es
+precision highp float;
+in vec2 vUv; out vec4 o;
+uniform vec2 uRes;
+uniform vec3 uCamPos, uCamRight, uCamUp, uCamFwd;
+uniform float uTanHalf, uAspect, uTobs, uDiskT, uEmit, uHdr;
+uniform vec3 uStop, uDir;
+uniform float uV0, uTd0, uTd1, uBubR, uSig, uFlashOn;
+uniform samplerCube uSky;
+uniform sampler2D uBB, uDiskTex;
+#define PI 3.14159265359
+const float LTMIN = 5.7037825, LTMAX = 11.5129255;
+const float RIN = 3.0, ROUT = 9.0;
+${NOISE}
+vec4 bbTex(float T){
+  float x = clamp((log(max(T, 300.0)) - LTMIN) / (LTMAX - LTMIN), 0.0, 1.0);
+  return texture(uBB, vec2(x * (511.0 / 512.0) + 0.5 / 512.0, 0.5));
+}
+vec3 blackbody(float T){ vec4 t = bbTex(T); return t.rgb * exp(t.a); }
+float h12(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+
+// The bubble's trip: v0 until it brakes evenly to a stop at uStop at time uTd1.
+void bubble(float t, out float s, out float v, out float acc){
+  float D = uTd1 - uTd0;
+  if (t < uTd0){ s = -uV0 * D * 0.5 - uV0 * (uTd0 - t); v = uV0; acc = 0.0; }
+  else if (t < uTd1){ float w = uTd1 - t; s = -uV0 / (2.0 * D) * w * w; v = uV0 * w / D; acc = -uV0 / D; }
+  else { s = 0.0; v = 0.0; acc = 0.0; }
+}
+float shapeF(float r){ return (tanh(uSig * (r + uBubR)) - tanh(uSig * (r - uBubR))) / (2.0 * tanh(uSig * uBubR)); }
+float shapeFp(float r){
+  float a = tanh(uSig * (r + uBubR)), b = tanh(uSig * (r - uBubR));
+  return uSig * ((1.0 - a * a) - (1.0 - b * b)) / (2.0 * tanh(uSig * uBubR));
+}
+vec3 flowAt(vec3 x, float t){
+  float r = length(x);
+  vec3 V = -x * pow(r, -1.5);
+  float s, v, acc; bubble(t, s, v, acc);
+  vec3 rel = x - (uStop + uDir * s);
+  return V + v * shapeF(length(rel)) * uDir;
+}
+// Hamilton's equations. State: x, t, p (spatial, covariant), pt.
+void deriv(vec3 x, float t, vec3 p, float pt, out vec3 dx, out float dt, out vec3 dp, out float dpt){
+  float r = max(length(x), 0.5);
+  float r15 = pow(r, -1.5);
+  vec3 Vb = -x * r15;
+  float s, v, acc; bubble(t, s, v, acc);
+  vec3 rel = x - (uStop + uDir * s);
+  float rs = max(length(rel), 1e-4);
+  float f = shapeF(rs), fp = shapeFp(rs);
+  vec3 V = Vb + v * f * uDir;
+  float q = pt + dot(V, p);
+  dx = p - q * V;
+  dt = -q;
+  float pd = dot(uDir, p);
+  vec3 gb = -(p * r15 - 1.5 * dot(x, p) * x * pow(r, -3.5));
+  vec3 gw = v * pd * fp * rel / rs;
+  dp = q * (gb + gw);
+  dpt = q * pd * (acc * f + v * fp * (-dot(rel, uDir) * v / rs));
+}
+// --- the ship, inside the bubble (its own flat space): a signed distance field, bow along uDir
+float sdCapsule(vec3 p, vec3 a, vec3 b, float r){ vec3 pa = p - a, ba = b - a; float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0); return length(pa - ba * h) - r; }
+float sdTorusX(vec3 p, float R, float r){ vec2 q = vec2(length(p.yz) - R, p.x); return length(q) - r; }
+float sdBox(vec3 p, vec3 b){ vec3 q = abs(p) - b; return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0); }
+float shipSDF(vec3 p){
+  float d = sdCapsule(p, vec3(-1.7, 0.0, 0.0), vec3(1.3, 0.0, 0.0), 0.26);
+  vec3 b = p - vec3(1.6, 0.0, 0.0);
+  d = min(d, sdBox(b * vec3(1.0, 1.0, 1.0), vec3(0.85, 0.035, 0.42 - 0.42 * clamp((b.x + 0.85) / 1.7, 0.0, 1.0))));
+  d = min(d, sdTorusX(p - vec3(-0.55, 0.0, 0.0), 0.82, 0.06));
+  d = min(d, sdBox(p - vec3(-0.55, 0.0, 0.0), vec3(0.03, 0.8, 0.03)));
+  d = min(d, sdBox(p - vec3(-0.55, 0.0, 0.0), vec3(0.03, 0.03, 0.8)));
+  vec3 q = vec3(p.x + 1.55, abs(p.y), p.z);
+  d = min(d, sdBox(q - vec3(0.0, 0.55, 0.0) , vec3(0.28 + 0.22 * (0.55 - q.y), 0.3, 0.02)));
+  d = min(d, sdBox(vec3(p.x + 0.4, p.y - 0.3, p.z), vec3(0.5, 0.06, 0.1)));
+  d = min(d, sdBox(vec3(p.x - 0.4, p.y + 0.29, p.z), vec3(0.4, 0.05, 0.12)));
+  return d;
+}
+vec3 shipFrame(vec3 w, vec3 c, out vec3 axY){
+  vec3 ax = uDir;
+  axY = normalize(vec3(0.0, 1.0, 0.0) - ax * ax.y);
+  vec3 axZ = cross(ax, axY);
+  vec3 d = w - c;
+  return vec3(dot(d, ax), dot(d, axY), dot(d, axZ));
+}
+vec3 starLayer(vec3 D, float foot, float scale, float prob, float bright, float seed){
+  vec3 c = floor(D * scale);
+  vec3 h = hu(c + seed);
+  vec3 S = normalize(c + 0.25 + 0.5 * hu(c + seed + 19.19));
+  vec3 Sq = S * scale;
+  bool ok = h.x < prob && all(greaterThan(Sq, c + 0.15)) && all(lessThan(Sq, c + 0.85));
+  float sig0 = 0.00032;
+  float sig = max(sig0, 0.6 * foot);
+  vec3 dv = D - S;
+  float mag = min(pow(max(h.y, 0.002), -0.85), 25.0);
+  float I = bright * mag * (sig0 * sig0) / (sig * sig) * exp(-0.5 * dot(dv, dv) / (sig * sig));
+  float Ts = h.z < 0.12 ? mix(12000.0, 26000.0, h.z / 0.12) : mix(3100.0, 8000.0, pow((h.z - 0.12) / 0.88, 1.6));
+  vec3 s = ok ? I * bbTex(Ts).rgb : vec3(0.0);
+  float lod = smoothstep(0.1, 0.25, sig * scale);
+  vec3 avg = vec3(bright * 3.8 * 6.2832 * sig0 * sig0 * prob * 0.45 * scale * scale);
+  return mix(s, avg, lod);
+}
+float diskTemp(float r){ return pow(3.0 / r, 0.75) * pow(max(1.0 - sqrt(RIN / r), 0.0), 0.25) / 0.48807; }
+
+void main(){
+  vec2 ndc = (gl_FragCoord.xy / uRes) * 2.0 - 1.0;
+  vec3 d = normalize(uCamFwd + ndc.x * uAspect * uTanHalf * uCamRight + ndc.y * uTanHalf * uCamUp);
+  vec3 x = uCamPos;
+  float t = uTobs;
+  vec3 p = d;
+  vec3 Vc = flowAt(x, t);
+  float pt = 1.0 - dot(Vc, p);
+  float Eobs = pt / sqrt(max(1.0 - dot(Vc, Vc), 1e-3));
+  vec3 col = vec3(0.0);
+  float trans = 1.0;
+  bool escaped = false;
+  vec3 D = d;
+  float jit = h12(gl_FragCoord.xy);
+  vec3 dxv = p;
+  for (int i = 0; i < 320; i++){
+    float r = length(x);
+    float s, v, acc; bubble(t, s, v, acc);
+    vec3 c = uStop + uDir * s;
+    vec3 rel = x - c;
+    float rs = length(rel);
+    // inside the bubble, space is flat and rides along: light goes straight in the bubble's frame
+    float rIn = uBubR - 1.6 / uSig;
+    if (rs < rIn){
+      vec3 dir = normalize(p);
+      float along = 0.0;
+      float bExit = -dot(rel, dir) + sqrt(max(dot(rel, dir) * dot(rel, dir) - dot(rel, rel) + rIn * rIn, 0.0));
+      vec3 axY;
+      bool hit = false;
+      vec3 lp = vec3(0.0);
+      for (int k = 0; k < 64; k++){
+        vec3 w = c + rel + dir * along;
+        lp = shipFrame(w, c, axY);
+        float dd = shipSDF(lp);
+        if (dd < 0.004){ hit = true; break; }
+        along += dd;
+        if (along > bExit) break;
+      }
+      float q = pt + dot(flowAt(x, t), p);
+      if (hit){
+        vec3 w = c + rel + dir * along;
+        vec2 e = vec2(0.004, 0.0);
+        vec3 lq = shipFrame(w, c, axY);
+        vec3 n = normalize(vec3(shipSDF(lq + e.xyy) - shipSDF(lq - e.xyy), shipSDF(lq + e.yxy) - shipSDF(lq - e.yxy), shipSDF(lq + e.yyx) - shipSDF(lq - e.yyx)));
+        vec3 nw = n.x * uDir + n.y * axY + n.z * cross(uDir, axY);
+        vec3 L = normalize(-w);
+        vec3 Vd = -dir;
+        float diff = max(dot(nw, L), 0.0), rim = pow(1.0 - max(dot(nw, Vd), 0.0), 3.0);
+        // the ship rides the flow, so the energy it measures is q; arriving energy is Eobs
+        float g = clamp(Eobs / max(q, 1e-3), 0.05, 20.0);
+        vec3 lit = blackbody(4300.0 * g) * uEmit * (0.12 + 0.1 * h12(floor(lq.xz * 14.0))) * (2.4 * diff + 0.25 + 1.2 * rim);
+        float win = step(0.82, fract(lq.x * 9.0)) * step(abs(lq.y), 0.2) * step(0.5, fract(lq.z * 6.0 + 0.25));
+        lit += blackbody(9000.0 * g) * uEmit * 0.6 * win;
+        col += trans * lit;
+        trans = 0.0;
+        break;
+      }
+      float dl = bExit / max(length(p), 1e-4);
+      t += -q * dl;
+      bubble(t, s, v, acc);
+      x = uStop + uDir * s + rel + dir * (bExit + 0.02);
+      continue;
+    }
+    float wallD = abs(rs - uBubR);
+    float hw = v > 0.01 ? max(0.35 * wallD, 0.025) : 2.5;
+    vec3 x0 = x;
+    vec3 k1x, k2x, k3x, k4x, k1p, k2p, k3p, k4p; float k1t, k2t, k3t, k4t, k1q, k2q, k3q, k4q;
+    deriv(x, t, p, pt, k1x, k1t, k1p, k1q);
+    // inside the photon sphere and still heading in: this light came from the horizon, so it is dark
+    if (r < 1.5 && dot(x, k1x) < 0.0){ trans = 0.0; break; }
+    // step by distance travelled, not by the affine parameter (momenta grow near the hole)
+    float h = max(min(min(0.12 * max(r - 0.6, 0.2), 2.5) / max(length(k1x), 1.0), hw), 0.004);
+    deriv(x + 0.5 * h * k1x, t + 0.5 * h * k1t, p + 0.5 * h * k1p, pt + 0.5 * h * k1q, k2x, k2t, k2p, k2q);
+    deriv(x + 0.5 * h * k2x, t + 0.5 * h * k2t, p + 0.5 * h * k2p, pt + 0.5 * h * k2q, k3x, k3t, k3p, k3q);
+    deriv(x + h * k3x, t + h * k3t, p + h * k3p, pt + h * k3q, k4x, k4t, k4p, k4q);
+    x += h / 6.0 * (k1x + 2.0 * k2x + 2.0 * k3x + k4x);
+    t += h / 6.0 * (k1t + 2.0 * k2t + 2.0 * k3t + k4t);
+    p += h / 6.0 * (k1p + 2.0 * k2p + 2.0 * k3p + k4p);
+    pt += h / 6.0 * (k1q + 2.0 * k2q + 2.0 * k3q + k4q);
+    dxv = k4x;
+    float rn = length(x);
+    // traced backward, light that fell in creeps toward the horizon without ever crossing it
+    if (rn < 1.04){ trans = 0.0; break; }
+    // the accretion disk: a thin sheet in the y = 0 plane
+    if (x0.y * x.y < 0.0){
+      float fr = x0.y / (x0.y - x.y);
+      vec3 P = mix(x0, x, fr);
+      float rd = length(P.xz);
+      if (rd > RIN && rd < ROUT){
+        float ang = atan(P.z, P.x);
+        float Om = sqrt(0.5 / (rd * rd * rd));
+        float ra = ang + Om * uDiskT;
+        float n = (texture(uDiskTex, vec2(ra / 6.2831853, rd / 32.0)).r - 0.5) / 0.45;
+        float dens = smoothstep(RIN, RIN + 0.8, rd) * (1.0 - smoothstep(ROUT * 0.6, ROUT, rd)) * clamp(0.55 + 1.8 * n, 0.05, 2.0);
+        float alpha = 1.0 - exp(-dens * 2.0 / max(abs(normalize(x - x0).y), 0.05));
+        float ut = inversesqrt(max(1.0 - 1.5 / rd, 1e-3));
+        vec3 u = ut * Om * cross(vec3(0.0, 1.0, 0.0), P);
+        float Eem = ut * pt + dot(p, u);
+        float g = clamp(Eobs / max(Eem, 1e-3), 0.02, 30.0);
+        col += trans * alpha * blackbody(4300.0 * diskTemp(rd) * g) * uEmit;
+        trans *= 1.0 - alpha;
+      }
+    }
+    // the burst released ahead of the bubble when it stops (simplified)
+    if (uFlashOn > 0.5 && t > uTd1){
+      vec3 rr = x - uStop;
+      float dist = length(rr), age = t - uTd1;
+      float shell = exp(-pow((dist - age) / 0.35, 2.0)) * smoothstep(0.55, 0.95, dot(rr / max(dist, 1e-3), uDir)) * exp(-age / 10.0);
+      // light leaving a point at rest here reaches you shifted by g; near the horizon it fades away
+      vec3 Vh = -x * pow(max(rn, 1.0), -1.5);
+      float g = Eobs / max(pt * inversesqrt(max(1.0 - dot(Vh, Vh), 1e-3)), 1e-3);
+      col += trans * shell * vec3(0.55, 0.75, 1.0) * 0.6 * h * length(k1x) * min(g * g * g * g, 4.0);
+    }
+    if (trans < 0.004) break;
+    if (rn > 70.0 && dot(x, k4x) > 0.0 && (v < 0.01 || rs > uBubR + 6.0)){ escaped = true; break; }
+  }
+  D = normalize(dxv);
+  vec3 dDx = dFdx(D), dDy = dFdy(D);
+  float foot = max(length(dDx), length(dDy));
+  vec3 sky = exp2(textureGrad(uSky, D, dDx, dDy).rgb * 18.0 - 16.0);
+  sky += starLayer(D, foot, 64.0, 0.42, 0.9, 0.0) + starLayer(D, foot, 150.0, 0.5, 0.22, 71.3);
+  // starlight arrives with the energy shift picked up on its way (gravity, and the bubble's walls)
+  float gs = clamp(Eobs / max(pt, 1e-3), 0.05, 20.0);
+  sky *= blackbody(5800.0 * gs) / blackbody(5800.0);
+  if (escaped) col += trans * sky;
+  o = uHdr > 0.5 ? vec4(col, 1.0) : vec4(sqrt(clamp(col / 16.0, 0.0, 1.0)), 1.0);
+}`;
+/*@noise_down_up_comp@*/
+/* ---------------------------------------------------------------- WebGL setup */
+const canvas = $('#gl');
+const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, depth: false, stencil: false, powerPreference: 'high-performance' });
+if (!gl) { showFallback('This page needs WebGL 2, which this browser or device doesn’t provide. A recent Chrome, Edge, Firefox or Safari will run it.'); return; }
+function compile(type, src) {
+  const sh = gl.createShader(type);
+  gl.shaderSource(sh, src); gl.compileShader(sh);
+  if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh));
+  return sh;
+}
+let vsObj;
+function program(fs) {
+  const p = gl.createProgram();
+  vsObj = vsObj || compile(gl.VERTEX_SHADER, VS);
+  gl.attachShader(p, vsObj); gl.bindAttribLocation(p, 0, 'aPos');
+  gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  const u = {}, n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+  for (let i = 0; i < n; i++) { const info = gl.getActiveUniform(p, i); u[info.name] = gl.getUniformLocation(p, info.name); }
+  return { p, u };
+}
+let progSky, progScene, progDown, progUp, progComp, progNoise;
+try {
+  progSky = program(SKY_FS); progScene = program(SCENE_FS); progDown = program(DOWN_FS);
+  progUp = program(UP_FS); progComp = program(COMP_FS); progNoise = program(NOISE_FS);
+} catch (err) {
+  console.error(err);
+  showFallback('The graphics driver couldn’t compile the ray tracer. Updating the browser or graphics driver usually fixes this.');
+  return;
+}
+const quad = gl.createVertexArray();
+gl.bindVertexArray(quad);
+gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+const draw = () => { gl.bindVertexArray(quad); gl.drawArrays(gl.TRIANGLES, 0, 3); };
+function setU(prog, name, ...v) {
+  const loc = prog.u[name]; if (loc == null) return;
+  if (v.length === 1) gl.uniform1f(loc, v[0]); else if (v.length === 2) gl.uniform2f(loc, v[0], v[1]); else gl.uniform3f(loc, v[0], v[1], v[2]);
+}
+function setI(prog, name, v) { const loc = prog.u[name]; if (loc != null) gl.uniform1i(loc, v); }
+function texParams(target, minF, magF) {
+  gl.texParameteri(target, gl.TEXTURE_MIN_FILTER, minF); gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, magF);
+  gl.texParameteri(target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+}
+function makeTarget(w, h, hdr) {
+  const t = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, t);
+  if (hdr) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, w, h, 0, gl.RGBA, gl.HALF_FLOAT, null);
+  else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+  texParams(gl.TEXTURE_2D, gl.LINEAR, gl.LINEAR);
+  const f = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+  const ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  return { t, f, w, h, ok };
+}
+function freeTarget(x) { if (x) { gl.deleteTexture(x.t); gl.deleteFramebuffer(x.f); } }
+const hasCBF = !!(gl.getExtension('EXT_color_buffer_float') || gl.getExtension('EXT_color_buffer_half_float'));
+let HDR = false;
+if (hasCBF) { const test = makeTarget(4, 4, true); HDR = test.ok; freeTarget(test); }
+const aniso = gl.getExtension('EXT_texture_filter_anisotropic');
+const bbTex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, bbTex);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, 512, 1, 0, gl.RGBA, gl.FLOAT, buildBBTable());
+texParams(gl.TEXTURE_2D, gl.LINEAR, gl.LINEAR);
+const isSmall = Math.min(screen.width, screen.height) < 700;
+const skySize = Math.min(gl.getParameter(gl.MAX_CUBE_MAP_TEXTURE_SIZE), isSmall ? 512 : 1024);
+const skyTex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_CUBE_MAP, skyTex);
+for (let f = 0; f < 6; f++) gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X + f, 0, gl.RGBA8, skySize, skySize, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+{
+  const fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.viewport(0, 0, skySize, skySize);
+  gl.useProgram(progSky.p);
+  for (let f = 0; f < 6; f++) { gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_CUBE_MAP_POSITIVE_X + f, skyTex, 0); setI(progSky, 'uFace', f); draw(); }
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.deleteFramebuffer(fb);
+  gl.bindTexture(gl.TEXTURE_CUBE_MAP, skyTex); gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+  texParams(gl.TEXTURE_CUBE_MAP, gl.LINEAR_MIPMAP_LINEAR, gl.LINEAR);
+  if (aniso) gl.texParameterf(gl.TEXTURE_CUBE_MAP, aniso.TEXTURE_MAX_ANISOTROPY_EXT, Math.min(8, gl.getParameter(aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
+}
+const diskTex = gl.createTexture();
+{
+  const W = 2048, H = 1024;
+  gl.bindTexture(gl.TEXTURE_2D, diskTex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, W, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+  const fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, diskTex, 0);
+  gl.viewport(0, 0, W, H); gl.useProgram(progNoise.p); draw();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.deleteFramebuffer(fb);
+  gl.bindTexture(gl.TEXTURE_2D, diskTex); gl.generateMipmap(gl.TEXTURE_2D);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+}
+let scene = null, mips = [];
+function ensureTargets(w, h) {
+  if (scene && scene.w === w && scene.h === h) return;
+  freeTarget(scene); mips.forEach(freeTarget); mips = [];
+  scene = makeTarget(w, h, HDR);
+  if (HDR) { let mw = w, mh = h; for (let i = 0; i < 6; i++) { mw = Math.max(1, mw >> 1); mh = Math.max(1, mh >> 1); mips.push(makeTarget(mw, mh, true)); } }
+}
+
+/* ---------------------------------------------------------------- the trip */
+// The bubble flies straight at the black hole at V0 times light speed, brakes evenly over TD
+// time units and stops at STOP (rs = 1 units, time in rs/c). Everything else follows from tracing light.
+const V0 = 6, TD = 4, BUB_R = 2.7, SIG = 3.5;
+const STOP = [-8.4, 1.1, 2.6];
+const DIR = V.norm(V.mul(STOP, -1));
+const TD1 = 0, TD0 = -TD;
+const LOOK = [-7.5, 1.0, 3.5];
+const cam = { R: 24, elev: 0.18, azim: -0.78 };
+const camT = { ...cam };
+function camera() {
+  const ce = Math.cos(cam.elev), se = Math.sin(cam.elev), ca = Math.cos(cam.azim), sa = Math.sin(cam.azim);
+  const pos = [cam.R * ce * sa, cam.R * se, cam.R * ce * ca];
+  const fwd = V.norm(V.sub(LOOK, pos)), right = V.norm(V.cross(fwd, [0, 1, 0])), up = V.cross(right, fwd);
+  return { pos, fwd, right, up };
+}
+function bubbleS(t) {
+  if (t < TD0) return -V0 * TD * 0.5 - V0 * (TD0 - t);
+  if (t < TD1) { const w = TD1 - t; return -V0 / (2 * TD) * w * w; }
+  return 0;
+}
+function bubbleV(t) { return t < TD0 ? V0 : t < TD1 ? V0 * (TD1 - t) / TD : 0; }
+// When does light from the bubble first reach the default camera? Light from a superluminal
+// source arrives first from the point that minimises (emission time + light travel time).
+const cam0 = camera().pos;
+let tFirst = Infinity, tStopSeen = 0;
+for (let te = -120; te <= 0; te += 0.02) {
+  const xs = V.add(STOP, V.mul(DIR, bubbleS(te)));
+  const ta = te + V.len(V.sub(xs, cam0));
+  if (ta < tFirst) tFirst = ta;
+}
+tStopSeen = V.len(V.sub(STOP, cam0));
+const END = 40;
+const T_START = tFirst - 7, RATE = (tStopSeen + 26 - T_START) / END;
+const toObs = (s) => T_START + s * RATE;
+const fromObs = (t) => (t - T_START) / RATE;
+const S_APPEAR = fromObs(tFirst), S_STOP = fromObs(tStopSeen);
+const CAPTIONS = [
+  [0, 'Something is coming at the black hole faster than light. You can’t see it yet: it is outrunning its own light.'],
+  [S_APPEAR - 0.6, 'It appears out of nowhere as two ships. One races on toward the hole. The other flies backward along the way it came.'],
+  [S_APPEAR + 5, 'Both are real images. Light from later in the trip reaches you before light from earlier, so you see the journey run forward and backward at once.'],
+  [S_STOP - 7, 'The bubble works like a lens: space squeezed ahead of it and stretched behind bends the starlight around it.'],
+  [S_STOP - 0.5, 'It drops out of warp. The light piled up on the bubble’s front wall bursts out ahead of it, straight at the black hole.'],
+  [S_STOP + 6, 'The backward twin is still receding: light from the far end of the trip is still on its way to you.'],
+  [S_STOP + 13, 'Drag to look around, and scrub back to watch the two ships split apart.'],
+];
+
+/* ---------------------------------------------------------------- input and story controls */
+let story = 0, playing = !reduceMotion, holdUntil = 0, simDisk = 0;
+const marks = $('#marks');
+CAPTIONS.slice(1).forEach(([t]) => { const i = document.createElement('i'); i.style.left = `${clamp(t / END, 0, 1) * 100}%`; marks.appendChild(i); });
+const pointers = new Map();
+let dragging = false, pinch0 = 0, pinchR = 0;
+canvas.addEventListener('pointerdown', (e) => {
+  canvas.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); pinchR = camT.R; }
+});
+canvas.addEventListener('pointermove', (e) => {
+  const rec = pointers.get(e.pointerId); if (!rec) return;
+  const dx = e.clientX - rec.x, dy = e.clientY - rec.y; rec.x = e.clientX; rec.y = e.clientY;
+  if (pointers.size === 1) { dragging = true; canvas.classList.add('dragging'); camT.azim -= dx * 0.005; camT.elev = clamp(camT.elev + dy * 0.004, -1.2, 1.2); }
+  else if (pointers.size === 2 && pinch0 > 0) { const [a, b] = [...pointers.values()]; camT.R = clamp(pinchR * pinch0 / Math.hypot(a.x - b.x, a.y - b.y), 14, 60); }
+});
+const endP = (e) => { pointers.delete(e.pointerId); if (!pointers.size) { dragging = false; canvas.classList.remove('dragging'); } if (pointers.size < 2) pinch0 = 0; };
+canvas.addEventListener('pointerup', endP); canvas.addEventListener('pointercancel', endP);
+canvas.addEventListener('wheel', (e) => { e.preventDefault(); camT.R = clamp(camT.R * Math.exp(e.deltaY * 0.001), 14, 60); }, { passive: false });
+const playBtn = $('#playBtn'), timeline = $('#timeline');
+const PLAY_ICON = '<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5v11l9.5-5.5z"/></svg>';
+const PAUSE_ICON = '<svg viewBox="0 0 14 14" aria-hidden="true"><rect x="2" y="1" width="3.5" height="12" rx="1"/><rect x="8.5" y="1" width="3.5" height="12" rx="1"/></svg>';
+function setPlaying(p) { playing = p; playBtn.innerHTML = p ? PAUSE_ICON : PLAY_ICON; playBtn.setAttribute('aria-label', p ? 'Pause' : 'Play'); }
+playBtn.addEventListener('click', () => { if (!playing && story >= END) story = 0; setPlaying(!playing); });
+timeline.addEventListener('input', () => { story = parseFloat(timeline.value); holdUntil = 0; });
+let toastTimer = 0;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 4200); }
+function isFull() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+function toggleFullscreen() {
+  if (isFull()) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
+  const el = document.documentElement, req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!req) { toast('This browser can’t go full screen from here. Press F11 (or Ctrl+Cmd+F on a Mac).'); return; }
+  try { const p = req.call(el); if (p && p.catch) p.catch(() => toast('Full screen was blocked here. Press F11 (or Ctrl+Cmd+F on a Mac), or open the page in its own tab.')); }
+  catch (err) { toast('Full screen was blocked here. Press F11 (or Ctrl+Cmd+F on a Mac).'); }
+}
+$('#fullBtn').addEventListener('click', toggleFullscreen);
+const onFs = () => { $('#fullBtn').textContent = isFull() ? 'Exit full screen' : 'Full screen'; };
+document.addEventListener('fullscreenchange', onFs); document.addEventListener('webkitfullscreenchange', onFs);
+function setClean(on) { document.body.classList.toggle('clean', on); $('#cleanBtn').setAttribute('aria-pressed', String(on)); $('#cleanBtn').textContent = on ? 'Show text' : 'Hide text'; }
+$('#cleanBtn').addEventListener('click', () => setClean(!document.body.classList.contains('clean')));
+$('#aboutBtn').addEventListener('click', () => { const a = $('#about'), open = a.hidden; a.hidden = !open; $('#aboutBtn').setAttribute('aria-expanded', String(open)); });
+addEventListener('keydown', (e) => {
+  if ((e.target.tagName || '').toLowerCase() === 'input' && e.key !== ' ') return;
+  if (e.key === ' ') { e.preventDefault(); playBtn.click(); }
+  else if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+  else if (e.key === 'h' || e.key === 'H') setClean(!document.body.classList.contains('clean'));
+});
+
+/* ---------------------------------------------------------------- frame */
+let renderScale = isSmall ? 0.45 : 0.6, scaleCool = 0, ft = 16.7, longRun = 0, last = performance.now(), first = true, captionIdx = -1, hudTimer = 0;
+const emitV = 1 / bbLum(4300);
+function render(c, vw) {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const cw = Math.max(1, Math.round(vw.cw * dpr)), ch = Math.max(1, Math.round(vw.ch * dpr));
+  if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }
+  const rw = Math.max(64, Math.round(cw * renderScale)), rh = Math.max(64, Math.round(ch * renderScale));
+  ensureTargets(rw, rh);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, scene.f);
+  gl.viewport(0, 0, rw, rh);
+  gl.useProgram(progScene.p);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_CUBE_MAP, skyTex);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, bbTex);
+  gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, diskTex);
+  setI(progScene, 'uSky', 0); setI(progScene, 'uBB', 1); setI(progScene, 'uDiskTex', 2);
+  setU(progScene, 'uRes', rw, rh);
+  setU(progScene, 'uCamPos', ...c.pos); setU(progScene, 'uCamRight', ...c.right); setU(progScene, 'uCamUp', ...c.up); setU(progScene, 'uCamFwd', ...c.fwd);
+  setU(progScene, 'uTanHalf', vw.tanHalf); setU(progScene, 'uAspect', vw.aspect);
+  setU(progScene, 'uTobs', toObs(story)); setU(progScene, 'uDiskT', simDisk); setU(progScene, 'uEmit', emitV); setU(progScene, 'uHdr', HDR ? 1 : 0);
+  setU(progScene, 'uStop', ...STOP); setU(progScene, 'uDir', ...DIR);
+  setU(progScene, 'uV0', V0); setU(progScene, 'uTd0', TD0); setU(progScene, 'uTd1', TD1); setU(progScene, 'uBubR', BUB_R); setU(progScene, 'uSig', SIG); setU(progScene, 'uFlashOn', 1);
+  draw();
+  if (HDR) {
+    gl.useProgram(progDown.p); gl.activeTexture(gl.TEXTURE0); setI(progDown, 'uSrc', 0);
+    let src = scene;
+    mips.forEach((mt, i) => { gl.bindFramebuffer(gl.FRAMEBUFFER, mt.f); gl.viewport(0, 0, mt.w, mt.h); gl.bindTexture(gl.TEXTURE_2D, src.t); setU(progDown, 'uTexel', 1 / src.w, 1 / src.h); setI(progDown, 'uFirst', i === 0 ? 1 : 0); draw(); src = mt; });
+    gl.useProgram(progUp.p); setI(progUp, 'uSrc', 0);
+    gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);
+    for (let i = mips.length - 2; i >= 0; i--) { const dst = mips[i], s = mips[i + 1]; gl.bindFramebuffer(gl.FRAMEBUFFER, dst.f); gl.viewport(0, 0, dst.w, dst.h); gl.bindTexture(gl.TEXTURE_2D, s.t); setU(progUp, 'uTexel', 1 / s.w, 1 / s.h); draw(); }
+    gl.disable(gl.BLEND);
+  }
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(0, 0, cw, ch);
+  gl.useProgram(progComp.p);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, scene.t);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, HDR ? mips[0].t : scene.t);
+  setI(progComp, 'uScene', 0); setI(progComp, 'uBloom', 1);
+  setU(progComp, 'uExposure', 1.3); setU(progComp, 'uBloomAmt', 0.2); setU(progComp, 'uHdr', HDR ? 1 : 0); setU(progComp, 'uTime', last / 1000);
+  draw();
+  return [rw, rh];
+}
+function viewInfo() {
+  const cw = canvas.clientWidth || innerWidth, ch = canvas.clientHeight || innerHeight;
+  const aspect = cw / ch, t = Math.tan(58 * Math.PI / 360);
+  return { cw, ch, aspect, tanHalf: aspect >= 1 ? t : t / Math.max(aspect, 0.5) };
+}
+function updateCaption() {
+  let idx = 0;
+  for (let i = 0; i < CAPTIONS.length; i++) if (story >= CAPTIONS[i][0]) idx = i;
+  if (idx === captionIdx) return;
+  captionIdx = idx;
+  $('#caption').textContent = CAPTIONS[idx][1];
+}
+function updateHud(rw, rh) {
+  // what you are seeing of the bubble right now left it when? (light from the stop point)
+  const tObs = toObs(story);
+  const sinceStop = tObs - tStopSeen;
+  $('#hud').innerHTML = `<span>bubble speed <b>${V0}× light</b> until it brakes</span>` +
+    `<span>your clock <b>${tObs.toFixed(1)}</b> r<sub>s</sub>/c ${sinceStop >= 0 ? '· the stop is <b>visible</b>' : `· the stop is still <b>${(-sinceStop).toFixed(1)}</b> away`}</span>` +
+    `<span><b>${(rw * rh / 1e6).toFixed(2)}M</b> rays · <b>${Math.round(1000 / ft)}</b> fps</span>`;
+}
+function frame(t) {
+  const dt = Math.min(0.1, Math.max(0.001, (t - last) / 1000));
+  last = t;
+  longRun = dt > 0.07 ? longRun + 1 : 0;
+  if (dt <= 0.07 || longRun >= 3) ft = lerp(ft, Math.min(dt * 1000, 250), dt > 0.07 ? 0.35 : 0.05);
+  if (!first && t > scaleCool) {
+    if (ft > 40 && renderScale > 0.25) { renderScale = Math.max(0.25, renderScale * (ft > 80 ? 0.7 : 0.88)); scaleCool = t + 700; }
+    else if (ft < 24 && renderScale < 1) { renderScale = Math.min(1, renderScale * 1.08); scaleCool = t + 1100; }
+  }
+  if (playing) {
+    if (story >= END) { if (!holdUntil) holdUntil = t + 3500; if (t > holdUntil) { story = 0; holdUntil = 0; } }
+    else story = Math.min(story + dt, END);
+  }
+  simDisk += dt * 6 * (reduceMotion ? 0.4 : 1);
+  const a = 1 - Math.exp(-8 * dt);
+  cam.R = lerp(cam.R, camT.R, a); cam.elev = lerp(cam.elev, camT.elev, a); cam.azim = lerp(cam.azim, camT.azim, a);
+  timeline.value = story.toFixed(2);
+  timeline.style.setProperty('--p', `${(story / END) * 100}%`);
+  $('#clock').textContent = `0:${String(Math.floor(story)).padStart(2, '0')}`;
+  updateCaption();
+  const [rw, rh] = render(camera(), viewInfo());
+  if (t > hudTimer) { updateHud(rw, rh); hudTimer = t + 250; }
+  if (first) { first = false; scaleCool = t + 1500; }
+  requestAnimationFrame(frame);
+}
+canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); showFallback('The graphics context was lost, often after a driver reset or sleep. Reload the page to start again.'); });
+setPlaying(playing);
+requestAnimationFrame(frame);
+})();
+</script>
